@@ -20,13 +20,28 @@ sns.set_palette("muted")
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
-HOME_DIRECTORY = Path("/onur9")  # Path.home()
+# Define the file paths
+CODING_DIRECTORY = Path(__file__).parent
+HOME_DIRECTORY = Path("/onur9")  # Path.home()  # BU EN SONDA DEĞİŞECEK
 BENCHMARK_DIRECTORY = HOME_DIRECTORY / "MRC" / "MRC - MI9050_Various_Benchmark"
-MASTER_FILE = BENCHMARK_DIRECTORY / "New folder/Alınan Veriler/2023/2.Dönem/2023_YILLIK_MASTER_DOSYA.xlsx"
+WORKING_DIRECTORY = BENCHMARK_DIRECTORY / "New folder/Alınan Veriler/2023/2.Dönem"
+MASTER_FILE = WORKING_DIRECTORY / "2023_YILLIK_MASTER_DOSYA.xlsx"
+
+COMPANY_GROUPS = {
+    "AYDEM": ["ADM EDAŞ", "GDZ EDAŞ"],
+    "ENERJİSA": ["BAŞKENT EDAŞ", "AYEDAŞ", "TOROSLAR EDAŞ"],
+    "AKSA": ["FIRAT EDAŞ", "ÇORUH EDAŞ"],
+    "SEDAŞ": ["SEDAŞ"],
+    "YEDAŞ": ["YEDAŞ"],
+    "TREDAŞ": ["TREDAŞ"],
+    "VEDAŞ": ["VEDAŞ"],
+    "UEDAŞ": ["UEDAŞ"],
+    "ARAS EDAŞ": ["ARAS EDAŞ"],
+    "MRC": [],
+}
 
 # Değişebilir verilerin alınması(Şirket adı, yıl, dosya adı)
 YEAR = "2023_v1"    # "2018","2019","2020-v1","2020-v2","2021-v1","2021-v2","2022-v1","2022-v2"
-COMPANY_NAME = "ENERJİSA"  # MRC,'ENERJİSA','AYDEM','SEDAŞ','YEDAŞ','TREDAŞ','UEDAŞ','ARAS EDAŞ','VEDAŞ'
 
 def mean_within_sigma(df: pd.DataFrame, column_name: str, sigma: int = 2) -> float:
     """
@@ -68,11 +83,53 @@ def format_percentage(value: float, decimal_digits: int = 2) -> str:
     """
     return "{:.{}f}%".format(value * 100, decimal_digits).replace('.', ',')
 
+
+def shuffle_columns(df, company_list):
+    """
+    Shuffle the columns of a DataFrame, excluding the first three and the last one.
+    Place the company_list columns at the beginning of the shuffle range.
+    """
+    col_start = 3  # 4th column (index starts from 0)
+    total_amount_of_companies = sum(len(companies) for companies in COMPANY_GROUPS.values())
+    col_end = col_start + total_amount_of_companies # Exclude the last column
+
+    # Fixed columns are the first three and the last one
+    fixed_columns = df.columns[:col_start].tolist() + df.columns[col_end:].tolist()
+
+    # Columns to be shuffled, excluding the company_list columns
+    columns_to_shuffle = [col for col in df.columns[col_start:col_end] if col not in company_list]
+
+    # Shuffle the columns
+    shuffled_columns = np.random.permutation(columns_to_shuffle)
+
+    # New column order: first the fixed columns, then the company_list, then the shuffled columns
+    new_column_order = fixed_columns[:col_start] + company_list + shuffled_columns.tolist() + fixed_columns[col_start:]
+
+    return df[new_column_order]
+
+
+# This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
 if __name__ == "__main__":
-    # Run the code
     # if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:  # 17
+
+    # Read the data from the Excel file and divide it into two DataFrames for the data and the layout
     dataframe_dict = pd.read_excel(MASTER_FILE, sheet_name=["2023_Total_Veriler", "pptx_layout"])
     df = dataframe_dict["2023_Total_Veriler"]
     pptx_layout = dataframe_dict["pptx_layout"]
+
+    # Add Category from APG No
     df['Category No'] = df['APG No'].str.split('.').str[0]
 
+    for company_group, company_list in COMPANY_GROUPS.items():
+        # Shuffle columns for each group and store in a list
+        shuffled_groups = []
+        for _, group in df.groupby('Category No'):
+            shuffled_group = shuffle_columns(group, company_list)
+            shuffled_group .columns = range(shuffled_group.shape[1])
+            shuffled_groups.append(shuffled_group)
+
+        # Merge the shuffled groups back together and reset the column names
+        merged_df = pd.concat(shuffled_groups).reset_index(drop=True)
+        merged_df.columns = range(merged_df.shape[1])
+
+        # merged_df.to_excel(f"/desktop/{YEAR}_{company_group}_Shuffled.xlsx", index=False)
