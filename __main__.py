@@ -65,33 +65,6 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def mean_within_sigma(df: pd.DataFrame, column_name: str, sigma: int = 2) -> float:
-    """
-    Calculate the mean of a DataFrame column within a specified number of standard deviations.
-
-    Parameters:
-    df (pandas.DataFrame): The DataFrame containing the data.
-    column_name (str): The name of the column to compute the mean for.
-    sigma (int, optional): The number of standard deviations to include. Default is 2.
-
-    Returns:
-    float: The mean of the values within the specified number of standard deviations.
-    """
-    # Compute the mean and standard deviation
-    mean = df[column_name].mean()
-    std = df[column_name].std()
-
-    # Define the range within the specified number of standard deviations
-    lower_bound = mean - sigma * std
-    upper_bound = mean + sigma * std
-
-    # Filter the DataFrame to include only values within the range
-    filtered_df = df[(df[column_name] >= lower_bound) & (df[column_name] <= upper_bound)]
-
-    # Compute the mean of the filtered values
-    filtered_mean = filtered_df[column_name].mean()
-
-    return filtered_mean
 
 def filtered_mean(row) -> int:
     """
