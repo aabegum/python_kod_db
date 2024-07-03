@@ -24,7 +24,8 @@ warnings.filterwarnings("ignore")
 CODING_DIRECTORY = Path(__file__).parent
 HOME_DIRECTORY = Path("/onur9")  # Path.home()  # BU EN SONDA DEĞİŞECEK
 BENCHMARK_DIRECTORY = HOME_DIRECTORY / "MRC" / "MRC - MI9050_Various_Benchmark"
-WORKING_DIRECTORY = BENCHMARK_DIRECTORY / "New folder/Alınan Veriler/2023/2.Dönem"
+MAIN_DIRECTORY = BENCHMARK_DIRECTORY / "Main_Directory"
+WORKING_DIRECTORY = MAIN_DIRECTORY / "Alınan Veriler/2023/2.Dönem"
 MASTER_FILE = WORKING_DIRECTORY / "2023_YILLIK_MASTER_DOSYA.xlsx"
 
 COMPANY_GROUPS = {
