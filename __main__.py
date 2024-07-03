@@ -40,9 +40,14 @@ COMPANY_GROUPS = {
     "ARAS EDAŞ": ["ARAS EDAŞ"],
     "MRC": [],
 }
+NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
 
 # Değişebilir verilerin alınması(Şirket adı, yıl, dosya adı)
 YEAR = "2023_v1"    # "2018","2019","2020-v1","2020-v2","2021-v1","2021-v2","2022-v1","2022-v2"
+
+SIGMA: int = 2
+START_COL = 3  # 4th column (index starts from 0)
+END_COL = START_COL + NUM_OF_COMPANIES
 
 def mean_within_sigma(df: pd.DataFrame, column_name: str, sigma: int = 2) -> float:
     """
@@ -72,6 +77,39 @@ def mean_within_sigma(df: pd.DataFrame, column_name: str, sigma: int = 2) -> flo
 
     return filtered_mean
 
+def filtered_mean(row) -> int:
+    """
+    Calculate the mean of each row within a specified number of standard deviations
+    and add it to a new column named 'filtered_mean'.
+
+    Parameters:
+    df (pandas.DataFrame): The DataFrame containing the data.
+    start_col (int): The starting column index for the range of columns to consider.
+    end_col (int): The ending column index (exclusive) for the range of columns to consider.
+    sigma (int, optional): The number of standard deviations to include. Default is 2.
+
+    Returns:
+    pandas.DataFrame: The DataFrame with the new column 'filtered_mean'.
+    """
+    # Extract the relevant columns
+    data = row[START_COL:END_COL]
+
+    # Compute the mean and standard deviation
+    mean = data.mean()
+    std = data.std()
+
+    # Define the range within the specified number of standard deviations
+    lower_bound = mean - SIGMA * std
+    upper_bound = mean + SIGMA * std
+
+    # Filter the data to include only values within the range
+    filtered_data = data[(data >= lower_bound) & (data <= upper_bound)]
+
+    # Compute the mean of the filtered values
+    return filtered_data.mean()
+
+
+
 def format_percentage(value: float, decimal_digits: int = 2) -> str:
     """
     Format a float value as a percentage with 2 decimal points and the percent sign in front.
@@ -90,21 +128,17 @@ def shuffle_columns(df, company_list):
     Shuffle the columns of a DataFrame, excluding the first three and the last one.
     Place the company_list columns at the beginning of the shuffle range.
     """
-    col_start = 3  # 4th column (index starts from 0)
-    total_amount_of_companies = sum(len(companies) for companies in COMPANY_GROUPS.values())
-    col_end = col_start + total_amount_of_companies # Exclude the last column
-
     # Fixed columns are the first three and the last one
-    fixed_columns = df.columns[:col_start].tolist() + df.columns[col_end:].tolist()
+    fixed_columns = df.columns[:START_COL].tolist() + df.columns[END_COL:].tolist()
 
     # Columns to be shuffled, excluding the company_list columns
-    columns_to_shuffle = [col for col in df.columns[col_start:col_end] if col not in company_list]
+    columns_to_shuffle = [col for col in df.columns[START_COL:END_COL] if col not in company_list]
 
     # Shuffle the columns
     shuffled_columns = np.random.permutation(columns_to_shuffle)
 
     # New column order: first the fixed columns, then the company_list, then the shuffled columns
-    new_column_order = fixed_columns[:col_start] + company_list + shuffled_columns.tolist() + fixed_columns[col_start:]
+    new_column_order = fixed_columns[:START_COL] + company_list + shuffled_columns.tolist() + fixed_columns[START_COL:]
 
     return df[new_column_order]
 
@@ -134,3 +168,6 @@ if __name__ == "__main__":
         merged_df.columns = range(merged_df.shape[1])
 
         # merged_df.to_excel(f"/desktop/{YEAR}_{company_group}_Shuffled.xlsx", index=False)
+
+        # Apply the filtered_mean function to each row and create a new column
+        merged_df['filtered_mean'] = merged_df.apply(filtered_mean, axis=1)
