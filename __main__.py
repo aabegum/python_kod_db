@@ -1,4 +1,5 @@
 # Standard library imports
+import argparse
 from pathlib import Path
 import warnings
 
@@ -20,13 +21,19 @@ sns.set_palette("muted")
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
-# Define the file paths
+# Define the directory paths
 CODING_DIRECTORY = Path(__file__).parent
 HOME_DIRECTORY = Path("/onur9")  # Path.home()  # BU EN SONDA DEĞİŞECEK
 BENCHMARK_DIRECTORY = HOME_DIRECTORY / "MRC" / "MRC - MI9050_Various_Benchmark"
 MAIN_DIRECTORY = BENCHMARK_DIRECTORY / "Main_Directory"
 WORKING_DIRECTORY = MAIN_DIRECTORY / "Alınan Veriler/2023/2.Dönem"
+TEMPLATE_DIRECTORY = MAIN_DIRECTORY / "Sunum_Şablonları"
+GRAPHICS_DIRECTORY = MAIN_DIRECTORY / "Grafikler"
+
+# Define the file paths
 MASTER_FILE = WORKING_DIRECTORY / "2023_YILLIK_MASTER_DOSYA.xlsx"
+YARIYIL_TEMPLATE_FILE = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yarıyıl_Raporu_Template.pptx"
+YILSONU_TEMPLATE_FILE = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Template.pptx"
 
 COMPANY_GROUPS = {
     "AYDEM": ["ADM EDAŞ", "GDZ EDAŞ"],
@@ -48,6 +55,15 @@ YEAR = "2023_v1"    # "2018","2019","2020-v1","2020-v2","2021-v1","2021-v2","202
 SIGMA: int = 2
 START_COL = 3  # 4th column (index starts from 0)
 END_COL = START_COL + NUM_OF_COMPANIES
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Create powerpoint files based on benchmark data')
+    parser.add_argument('year', type=int, help='Year of the data (e.g. 2023)')
+    parser.add_argument(
+        'type', type=str, choices=['yariyillik', 'yillik'],
+        help='Type of the data (must be "yariyillik" or "yillik")'
+    )
+    return parser.parse_args()
 
 def mean_within_sigma(df: pd.DataFrame, column_name: str, sigma: int = 2) -> float:
     """
@@ -145,7 +161,9 @@ def shuffle_columns(df, company_list):
 
 # This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
 if __name__ == "__main__":
-    # if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:  # 17
+    args = parse_arguments()
+    report_year = args.year
+    report_type = args.type
 
     # Read the data from the Excel file and divide it into two DataFrames for the data and the layout
     dataframe_dict = pd.read_excel(MASTER_FILE, sheet_name=["2023_Total_Veriler", "pptx_layout"])
