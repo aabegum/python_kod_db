@@ -1,5 +1,6 @@
 # Standard library imports
 import argparse
+import json
 from pathlib import Path
 import warnings
 
@@ -23,7 +24,7 @@ warnings.filterwarnings("ignore")
 
 # Define the directory paths
 CODING_DIRECTORY = Path(__file__).parent
-HOME_DIRECTORY = Path("/onur9")  # Path.home()  # BU EN SONDA DEĞİŞECEK
+HOME_DIRECTORY = Path.home()
 BENCHMARK_DIRECTORY = HOME_DIRECTORY / "MRC" / "MRC - MI9050_Various_Benchmark"
 MAIN_DIRECTORY = BENCHMARK_DIRECTORY / "Main_Directory"
 WORKING_DIRECTORY = MAIN_DIRECTORY / "Alınan Veriler/2023/2.Dönem"
@@ -32,8 +33,8 @@ GRAPHICS_DIRECTORY = MAIN_DIRECTORY / "Grafikler"
 
 # Define the file paths
 MASTER_FILE = WORKING_DIRECTORY / "2023_YILLIK_MASTER_DOSYA.xlsx"
-YARIYIL_TEMPLATE_FILE = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yarıyıl_Raporu_Template.pptx"
-YILSONU_TEMPLATE_FILE = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Template.pptx"
+YARIYIL_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yarıyıl_Raporu_Template.pptx"
+YILSONU_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Template.pptx"
 
 COMPANY_GROUPS = {
     "AYDEM": ["ADM EDAŞ", "GDZ EDAŞ"],
@@ -48,20 +49,25 @@ COMPANY_GROUPS = {
     "MRC": [],
 }
 NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
+# COMPANIES_RANGE = range(1, NUM_OF_COMPANIES + 1)
+COMPANIES_RANGE = np.arange(1, NUM_OF_COMPANIES + 1)
 
-# Değişebilir verilerin alınması(Şirket adı, yıl, dosya adı)
-YEAR = "2023_v1"    # "2018","2019","2020-v1","2020-v2","2021-v1","2021-v2","2022-v1","2022-v2"
+REPORT_TYPE_CHOICES = "yariyillik", "yillik"
+REPORT_TEMPLATE_FILES = {
+    "yariyillik": YARIYIL_TEMPLATE_PATH,
+    "yillik": YILSONU_TEMPLATE_PATH,
+}
 
-SIGMA: int = 2
-START_COL = 3  # 4th column (index starts from 0)
+SIGMA: int = 3
+START_COL = 3
 END_COL = START_COL + NUM_OF_COMPANIES
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Create powerpoint files based on benchmark data')
     parser.add_argument('year', type=int, help='Year of the data (e.g. 2023)')
     parser.add_argument(
-        'type', type=str, choices=['yariyillik', 'yillik'],
-        help='Type of the data (must be "yariyillik" or "yillik")'
+        'type', type=str, choices=REPORT_TYPE_CHOICES,
+        help=f'Type of the data (must be {REPORT_TYPE_CHOICES[0]} or {REPORT_TYPE_CHOICES[1]})'
     )
     return parser.parse_args()
 
@@ -151,14 +157,17 @@ if __name__ == "__main__":
         shuffled_groups = []
         for _, group in df.groupby('Category No'):
             shuffled_group = shuffle_columns(group, company_list)
-            shuffled_group .columns = range(shuffled_group.shape[1])
+            shuffled_group.columns.values[START_COL:END_COL] = COMPANIES_RANGE
             shuffled_groups.append(shuffled_group)
 
         # Merge the shuffled groups back together and reset the column names
         merged_df = pd.concat(shuffled_groups).reset_index(drop=True)
-        merged_df.columns = range(merged_df.shape[1])
-
-        # merged_df.to_excel(f"/desktop/{YEAR}_{company_group}_Shuffled.xlsx", index=False)
 
         # Apply the filtered_mean function to each row and create a new column
         merged_df['filtered_mean'] = merged_df.apply(filtered_mean, axis=1)
+        merged_df = pd.merge(merged_df, pptx_layout, left_on='APG No', right_on='APG Kodu', how='left')
+
+        # merged_df.to_excel(f"/desktop/{report_year}_{report_type}_{company_group}_Shuffled.xlsx", index=False)
+
+        # Create a list to indicate a company group (0) or their rivals (1) for each company group
+        company_color_indicator = [0] * NUM_OF_COMPANIES + [1] * (len(company_list) - NUM_OF_COMPANIES)
