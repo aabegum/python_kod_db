@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 # Standard library imports
 import argparse
 import json
@@ -130,6 +132,118 @@ def shuffle_columns(df, company_list):
     return df[new_column_order]
 
 
+def standardgraph(index, row):
+    # specifications for the standard graphs
+    # ax = plt.figure()
+
+    transposable = merged_df[["APG No"] + list(COMPANIES_RANGE)]
+    transposed = transposable.set_index("APG No").T
+
+    breakpoint()
+    ax = sns.scatterplot(data=transposed,
+                         x=row['APG No'],
+                         y=f"{row['APG No']}_{row['APG İsmi']}",
+                         legend=False,
+                         hue=company_color_indicator)
+    ax.set(xlabel=None)
+    ax.set(ylabel=None)
+    ax.grid(axis='y')
+    ax.set_xticks(COMPANIES_RANGE)
+    ax.set_xticklabels(COMPANIES_RANGE)
+    ax.set(title=f"{row['APG No']}_{row['APG İsmi']}")
+
+    # set the y-label to indicate that the corresponding KPI is in millions TL
+    if row["Birim"] == "TL":  # MILYON TL???
+        ax.set(ylabel='Milyon TL')
+
+    # set y tick labels for percentage KPI values and other values
+    # if APGs.loc[APGs['APG Kod-İsim'] == apg_no, 'veri_tipi'].sum() == '%':
+    if row["Birim"] == "%":  # Format with percentage sign with 2 decimal values
+        ylabels = [format_percentage(y) for y in ax.get_yticks()]
+        ax.set_yticklabels(ylabels)
+
+        # annotate points on the graph
+        for company_index in COMPANIES_RANGE:
+            value = merged_df.loc[index, company_index]
+            plt.annotate(text=format_percentage(value),
+                         xy=(company_index, value),
+                         xytext=(-5, 5),
+                         textcoords="offset pixels")
+        # for (x, y) in zip(table_new.index, table_new[apg_no]):
+        #     plt.annotate(text=format_percentage(y),  # "%" + str(y),
+        #                  xy=(x, y),
+        #                  xytext=(-5, 5),
+        #                  textcoords="offset pixels")
+
+    else:
+
+        ylabels = [y for y in ax.get_yticks()]
+        ax.set_yticklabels(ylabels)
+
+        # annotate points on the graph
+        for company_index in COMPANIES_RANGE:
+            value = merged_df.loc[index, company_index]
+            plt.annotate(text=str(value),
+                         xy=(company_index, value),
+                         xytext=(-5, 5),
+                         textcoords="offset pixels")
+        # for (x, y) in zip(table_new.index, table_new[apg_no]):
+        #     plt.annotate(text=str(y),
+        #                  xy=(x, y),
+        #                  xytext=(-5, 5),
+        #                  textcoords="offset pixels")
+
+    # draw horizontal mean value
+    ax.axhline(y=row["filtered_mean"],
+               color="purple",
+               alpha=0.7)
+
+    # save figure to local directory
+    pic_path = GRAPHICS_DIRECTORY /  f'{report_year}_{report_type}' / f'{row["APG No"]}_{row["APG İsmi"]}.png'
+    ax.get_figure().savefig(pic_path, bbox_inches='tight')
+
+def create_powerpoint():
+    template_file = REPORT_TEMPLATE_FILES[report_type]
+    presentation = Presentation(template_file)
+
+    for index, row in merged_df.iterrows():
+        apg = row["APG No"]
+        slide = presentation.slides[row["Sayfa"]]
+        left, top, height, width = row["Left"], row["Top"], row["Height"], row["Width"]
+        grafik_tipi = row["Grafik_tipi"]
+
+        create_figure_function_mapping = {
+            "standard": standardgraph,
+            # "stacked": stackedgraph,
+            # "overlayed": overlayedgraph,
+            # "e316": e316
+        }
+        create_figure_function = create_figure_function_mapping[grafik_tipi]
+        create_figure_function(index, row)
+        pic_path = GRAPHICS_DIRECTORY /  f'{report_year}_{report_type}' / f'{row["APG No"]}_{row["APG İsmi"]}.png'
+        slide.shapes.add_picture(str(pic_path), left, top, width, height)
+
+    bulgu_shapes = [
+        shape for slide in presentation.slides
+        for shape in slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX and shape.text.startswith("Bulgu")
+    ]
+
+    for idx, shape in enumerate(bulgu_shapes):
+        shape.text="Bulgu\n"+merged_df.iloc[idx]["filtered_mean"]
+        paragraphs = shape.text_frame.paragraphs
+        paragraphs[0].font.bold = True
+        for paragraph in paragraphs:
+            paragraph.font.size = Pt(10.5)
+
+    # for slide in presentation.slides:
+    #     for shape in slide.shapes:
+    #         if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX:
+    #             text = shape.text
+    #             if text.startswith("Bulgu"):
+    #                 pass
+                    # i += 1
+                    # shape_text = f"Bulgu\n\n{df.loc[0, 'Bulgu']}"
 # This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
 if __name__ == "__main__":
     args = parse_arguments()
@@ -163,3 +277,4 @@ if __name__ == "__main__":
 
         # Create a list to indicate a company group (0) or their rivals (1) for each company group
         company_color_indicator = [0] * NUM_OF_COMPANIES + [1] * (len(company_list) - NUM_OF_COMPANIES)
+        create_powerpoint()
