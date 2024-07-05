@@ -35,19 +35,11 @@ GRAPHICS_DIRECTORY = MAIN_DIRECTORY / "Grafikler"
 MASTER_FILE = WORKING_DIRECTORY / "2023_YILLIK_MASTER_DOSYA.xlsx"
 YARIYIL_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yarıyıl_Raporu_Template.pptx"
 YILSONU_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Template.pptx"
+COMPANY_GROUPS_PATH = CODING_DIRECTORY / "company_groups.json"
 
-COMPANY_GROUPS = {
-    "AYDEM": ["ADM EDAŞ", "GDZ EDAŞ"],
-    "ENERJİSA": ["BAŞKENT EDAŞ", "AYEDAŞ", "TOROSLAR EDAŞ"],
-    "AKSA": ["FIRAT EDAŞ", "ÇORUH EDAŞ"],
-    "SEDAŞ": ["SEDAŞ"],
-    "YEDAŞ": ["YEDAŞ"],
-    "TREDAŞ": ["TREDAŞ"],
-    "VEDAŞ": ["VEDAŞ"],
-    "UEDAŞ": ["UEDAŞ"],
-    "ARAS EDAŞ": ["ARAS EDAŞ"],
-    "MRC": [],
-}
+with COMPANY_GROUPS_PATH.open() as company_groups_file:
+    COMPANY_GROUPS = json.load(company_groups_file)
+
 NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
 # COMPANIES_RANGE = range(1, NUM_OF_COMPANIES + 1)
 COMPANIES_RANGE = np.arange(1, NUM_OF_COMPANIES + 1)
