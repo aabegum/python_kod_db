@@ -4,6 +4,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 import warnings
 
 # Third-party library imports
@@ -23,6 +24,8 @@ sns.set_palette("muted")
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
+
+ILLEGAL_WINDOWS_PATH_CHARACTERS = re.compile(r'[\\/:*?"<>|]')
 
 # Define the directory paths
 CODING_DIRECTORY = Path(__file__).parent
@@ -55,6 +58,11 @@ REPORT_TEMPLATE_FILES = {
 SIGMA: int = 3
 START_COL = 3
 END_COL = START_COL + NUM_OF_COMPANIES
+
+# PLOT PARAMETERS
+ANNOTATION_OFFSET_PIXELS = -5, 5
+HORIZONTAL_MEAN_COLOR = "purple"
+HORIZONTAL_MEAN_ALPHA = 0.7
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Create powerpoint files based on benchmark data')
@@ -132,11 +140,109 @@ def shuffle_columns(df, company_list):
     return df[new_column_order]
 
 
+def standardgraph(row) -> plt.Figure:
+    # Select the relevant columns and transpose the DataFrame and reset the index to companies
+    transposable = merged_df[["APG No"] + list(COMPANIES_RANGE)]
+    transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
+
+    # If next line doesn't exist, the graph will be overwritten by each row. Somehow necessary.
+    ax = plt.figure()
+
+    # Create the scatter plot
+    ax = sns.scatterplot(
+        data=transposed,
+        x="companies",
+        y=row['APG No'],
+        legend=False,
+        hue=company_color_indicator
+    )
+    ax.set(xlabel=None)
+    ax.set(ylabel=None)
+    ax.grid(axis='y')
+    ax.set_xticks(COMPANIES_RANGE)
+    ax.set_xticklabels(COMPANIES_RANGE)
+    ax.set(title=row['APG Full Name'])
+
+    # annotate points on the graph
+    for company_index in COMPANIES_RANGE:
+        value = row[company_index]
+        formatted_value = format_percentage(value) if row["Birim"] == "%" else str(value)
+        plt.annotate(
+            text=formatted_value,
+            xy=(company_index, value),
+            xytext=ANNOTATION_OFFSET_PIXELS,
+            textcoords="offset pixels"
+        )
+
+    # set the y-label to indicate that the corresponding KPI is in millions TL
+    if row["Birim"] == "TL":  # MILYON TL???
+        ax.set(ylabel='Milyon TL')
+
+    # Set y-axis tick labels if needed
+    if row["Birim"] == "%":
+        ax.set_yticklabels(map(format_percentage, ax.get_yticks()))
+
+    # draw horizontal mean value
+    ax.axhline(
+        y=row["filtered_mean"],
+        color=HORIZONTAL_MEAN_COLOR,
+        alpha=HORIZONTAL_MEAN_ALPHA,
+    )
+
+    return ax.get_figure()
+
+
+def create_powerpoint():
+    template_file = REPORT_TEMPLATE_FILES[report_type]
+    presentation = Presentation(template_file)
+
+    for _, row in merged_df.iterrows():
+        slide = presentation.slides[row["Sayfa"]]
+        left, top, height, width = row["Left"], row["Top"], row["Height"], row["Width"]
+        grafik_tipi = row["Grafik_tipi"]
+
+        create_figure_function_mapping = {
+            "standard": standardgraph,
+            # "stacked": stackedgraph,
+            # "overlayed": overlayedgraph,
+            # "e316": e316
+        }
+        create_figure_function = create_figure_function_mapping[grafik_tipi]
+        fig = create_figure_function(row)
+
+        # save figure to local directory
+        apg_pic_name = f'{row["APG Full Name"]}.png'
+        # Replace illegal characters in the file name with underscores
+        clean_apg_path = ILLEGAL_WINDOWS_PATH_CHARACTERS.sub('_', apg_pic_name)
+        pic_path = REPORT_DIRECTORY / clean_apg_path
+        # Create the directories if they don't exist
+        pic_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save the figure to the local directory
+        fig.savefig(pic_path, bbox_inches='tight')
+
+        # Add the figure to the slide
+        slide.shapes.add_picture(str(pic_path), left, top, width, height)
+
+    bulgu_shapes = [
+        shape for slide in presentation.slides
+        for shape in slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX and shape.text.startswith("Bulgu")
+    ]
+
+    for idx, shape in enumerate(bulgu_shapes):
+        shape.text="Bulgu\n" + merged_df.iloc[idx]["filtered_mean"]
+        paragraphs = shape.text_frame.paragraphs
+        paragraphs[0].font.bold = True
+        for paragraph in paragraphs:
+            paragraph.font.size = Pt(10.5)
+
+
 # This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
 if __name__ == "__main__":
     args = parse_arguments()
     report_year = args.year
     report_type = args.type
+    REPORT_DIRECTORY = GRAPHICS_DIRECTORY / f'{report_year}_{report_type}'
 
     # Read the data from the Excel file and divide it into two DataFrames for the data and the layout
     dataframe_dict = pd.read_excel(MASTER_FILE, sheet_name=["2023_Total_Veriler", "pptx_layout"])
@@ -145,6 +251,9 @@ if __name__ == "__main__":
 
     # Add Category from APG No
     df['Category No'] = df['APG No'].str.split('.').str[0]
+
+    # Add a new column to the DataFrame that concatenates the APG No and APG İsmi
+    df['APG Full Name'] = df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
 
     for company_group, company_list in COMPANY_GROUPS.items():
         # Shuffle columns for each group and store in a list
@@ -164,4 +273,8 @@ if __name__ == "__main__":
         # merged_df.to_excel(f"/desktop/{report_year}_{report_type}_{company_group}_Shuffled.xlsx", index=False)
 
         # Create a list to indicate a company group (0) or their rivals (1) for each company group
-        company_color_indicator = [0] * NUM_OF_COMPANIES + [1] * (len(company_list) - NUM_OF_COMPANIES)
+        num_of_group_companies = len(company_list)
+        num_of_other_companies = NUM_OF_COMPANIES - num_of_group_companies
+        company_color_indicator = [0] * num_of_group_companies + [1] * num_of_other_companies
+
+        create_powerpoint()
