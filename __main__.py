@@ -25,6 +25,7 @@ sns.set_palette("muted")
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
+# Define the regular expression pattern to match illegal characters in Windows file paths
 ILLEGAL_WINDOWS_PATH_CHARACTERS = re.compile(r'[\\/:*?"<>|]')
 
 # Define the directory paths
@@ -35,18 +36,19 @@ MAIN_DIRECTORY = BENCHMARK_DIRECTORY / "Main_Directory"
 WORKING_DIRECTORY = MAIN_DIRECTORY / "Alınan Veriler/2023/2.Dönem"
 TEMPLATE_DIRECTORY = MAIN_DIRECTORY / "Sunum_Şablonları"
 GRAPHICS_DIRECTORY = MAIN_DIRECTORY / "Grafikler"
+REPORTS_DIRECTORY = MAIN_DIRECTORY / "Raporlar"
 
 # Define the file paths
 MASTER_FILE = WORKING_DIRECTORY / "2023_YILLIK_MASTER_DOSYA.xlsx"
 YARIYIL_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yarıyıl_Raporu_Template.pptx"
 YILSONU_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Template.pptx"
 COMPANY_GROUPS_PATH = CODING_DIRECTORY / "company_groups.json"
+PRESENTATION_INTRO_TEMPLATE_PATH = CODING_DIRECTORY / "presentation_intro_template.txt"
 
 with COMPANY_GROUPS_PATH.open() as company_groups_file:
     COMPANY_GROUPS = json.load(company_groups_file)
 
 NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
-# COMPANIES_RANGE = range(1, NUM_OF_COMPANIES + 1)
 COMPANIES_RANGE = np.arange(1, NUM_OF_COMPANIES + 1)
 
 REPORT_TYPE_CHOICES = "yariyillik", "yillik"
@@ -60,9 +62,11 @@ START_COL = 3
 END_COL = START_COL + NUM_OF_COMPANIES
 
 # PLOT PARAMETERS
+PRESENTATION_PAGES = {0, 1, 2, 3, 17, 21, 25, 42, 68, 84, 103}
 ANNOTATION_OFFSET_PIXELS = -5, 5
 HORIZONTAL_MEAN_COLOR = "purple"
 HORIZONTAL_MEAN_ALPHA = 0.7
+FONT_SIZE = 10.5
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Create powerpoint files based on benchmark data')
@@ -73,6 +77,15 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+def generate_company_text(company_list):
+    company_lines = []
+    for i, company in enumerate(company_list, start=1):
+        line = f"- {i} numaralı Şirket, {company}'ı"
+        if i == len(company_list):
+            line += " temsil etmekte iken"
+        company_lines.append(line)
+    company_lines.append(f"{num_of_group_companies + 1} - {NUM_OF_COMPANIES} arasında numaralandırılan Şirketler, Kıyaslama Çalışmasına dahil olan diğer Elektrik Dağıtım Şirketlerini temsil etmektedir.")
+    return "\n".join(company_lines)
 
 def filtered_mean(row) -> int:
     """
@@ -214,7 +227,7 @@ def create_powerpoint():
         apg_pic_name = f'{row["APG Full Name"]}.png'
         # Replace illegal characters in the file name with underscores
         clean_apg_path = ILLEGAL_WINDOWS_PATH_CHARACTERS.sub('_', apg_pic_name)
-        pic_path = REPORT_DIRECTORY / clean_apg_path
+        pic_path = GRAPHICS_DIRECTORY / f'{report_year}_{report_type}' / company_group / clean_apg_path
         # Create the directories if they don't exist
         pic_path.parent.mkdir(parents=True, exist_ok=True)
         # Save the figure to the local directory
@@ -234,7 +247,37 @@ def create_powerpoint():
         paragraphs = shape.text_frame.paragraphs
         paragraphs[0].font.bold = True
         for paragraph in paragraphs:
-            paragraph.font.size = Pt(10.5)
+            paragraph.font.size = Pt(FONT_SIZE)
+
+    presentation_pages = set(PRESENTATION_PAGES)  # sunum başlıkları ve APG başlıklarının olduğu sayfalar
+    unique_graph_pages = set(merged_df.Sayfa)
+    presentation_pages.update(unique_graph_pages)  # Add the graph pages to the set
+
+    # removing the pages that are not selected
+    for slide_num in np.arange(103)[::-1]:
+        if slide_num not in presentation_pages:
+            xml_slides = presentation.slides._sldIdLst
+            slides = list(xml_slides)
+            xml_slides.remove(slides[slide_num])
+
+            # ilk ve ikinci slaytda yılı ve şirket ismini değiştirme
+    first_slide = presentation.slides[0]
+    shapes = first_slide.shapes
+    ay = 6 if report_type == REPORT_TYPE_CHOICES[0] else 12
+    shapes[3].text = f'{report_year} Yılı {ay} Aylık Döneme Ait Performans Göstergesi Sonuçları'
+
+    second_slide = presentation.slides[1]
+    shapes = second_slide.shapes
+
+    presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text()
+    company_enumeration_text = generate_company_text(company_list)
+    formatted_intro_text = presentation_text_template.format(company_text=company_enumeration_text, company_group=company_group, num_of_APG=unique_categories_amount)
+    print(formatted_intro_text)
+    shapes[3].text = formatted_intro_text
+    presentation_path = REPORTS_DIRECTORY / f'{report_year}_{report_type}' / company_group / f'{report_year}_{report_type}_{company_group}.pptx'
+    # Create the directories if they don't exist
+    presentation_path.parent.mkdir(parents=True, exist_ok=True)
+    presentation.save(presentation_path)
 
 
 # This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
@@ -242,7 +285,6 @@ if __name__ == "__main__":
     args = parse_arguments()
     report_year = args.year
     report_type = args.type
-    REPORT_DIRECTORY = GRAPHICS_DIRECTORY / f'{report_year}_{report_type}'
 
     # Read the data from the Excel file and divide it into two DataFrames for the data and the layout
     dataframe_dict = pd.read_excel(MASTER_FILE, sheet_name=["2023_Total_Veriler", "pptx_layout"])
@@ -251,6 +293,7 @@ if __name__ == "__main__":
 
     # Add Category from APG No
     df['Category No'] = df['APG No'].str.split('.').str[0]
+    unique_categories_amount = df['Category No'].nunique()
 
     # Add a new column to the DataFrame that concatenates the APG No and APG İsmi
     df['APG Full Name'] = df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
