@@ -3,6 +3,7 @@
 # Standard library imports
 import argparse
 import json
+import logging
 from pathlib import Path
 import re
 import warnings
@@ -24,6 +25,10 @@ sns.set_palette("muted")
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger()
 
 # Define the regular expression pattern to match illegal characters in Windows file paths
 ILLEGAL_WINDOWS_PATH_CHARACTERS = re.compile(r'[\\/:*?"<>|]')
@@ -207,6 +212,9 @@ def standardgraph(row) -> plt.Figure:
 
 def create_powerpoint():
     template_file = REPORT_TEMPLATE_FILES[report_type]
+    graphics_save_directory = GRAPHICS_DIRECTORY / f'{report_year}_{report_type}' / company_group
+    # Create the directories if they don't exist
+    graphics_save_directory.mkdir(parents=True, exist_ok=True)
     presentation = Presentation(template_file)
 
     for _, row in merged_df.iterrows():
@@ -227,11 +235,12 @@ def create_powerpoint():
         apg_pic_name = f'{row["APG Full Name"]}.png'
         # Replace illegal characters in the file name with underscores
         clean_apg_path = ILLEGAL_WINDOWS_PATH_CHARACTERS.sub('_', apg_pic_name)
-        pic_path = GRAPHICS_DIRECTORY / f'{report_year}_{report_type}' / company_group / clean_apg_path
+        pic_path = graphics_save_directory / clean_apg_path
         # Create the directories if they don't exist
         pic_path.parent.mkdir(parents=True, exist_ok=True)
         # Save the figure to the local directory
         fig.savefig(pic_path, bbox_inches='tight')
+        logger.info(f"Saved the figure for {row['APG No']} to {pic_path.relative_to(MAIN_DIRECTORY)}")
 
         # Add the figure to the slide
         slide.shapes.add_picture(str(pic_path), left, top, width, height)
@@ -243,7 +252,8 @@ def create_powerpoint():
     ]
 
     for idx, shape in enumerate(bulgu_shapes):
-        shape.text="Bulgu\n" + merged_df.iloc[idx]["filtered_mean"]
+        filtered_mean_value = merged_df.iloc[idx]["filtered_mean"]
+        shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {filtered_mean_value} olarak tespit edilmiştir.'
         paragraphs = shape.text_frame.paragraphs
         paragraphs[0].font.bold = True
         for paragraph in paragraphs:
@@ -254,31 +264,27 @@ def create_powerpoint():
     presentation_pages.update(unique_graph_pages)  # Add the graph pages to the set
 
     # removing the pages that are not selected
-    for slide_num in np.arange(103)[::-1]:
+    max_page_num = merged_df.Sayfa.max()
+    for slide_num in range(max_page_num, 0, -1):
         if slide_num not in presentation_pages:
             xml_slides = presentation.slides._sldIdLst
             slides = list(xml_slides)
             xml_slides.remove(slides[slide_num])
 
-            # ilk ve ikinci slaytda yılı ve şirket ismini değiştirme
-    first_slide = presentation.slides[0]
-    shapes = first_slide.shapes
+    # ilk ve ikinci slaytda yılı ve şirket ismini değiştirme
     ay = 6 if report_type == REPORT_TYPE_CHOICES[0] else 12
-    shapes[3].text = f'{report_year} Yılı {ay} Aylık Döneme Ait Performans Göstergesi Sonuçları'
-
-    second_slide = presentation.slides[1]
-    shapes = second_slide.shapes
+    presentation.slides[0].shapes[3].text = f'{report_year} Yılı {ay} Aylık Döneme Ait Performans Göstergesi Sonuçları'
 
     presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text()
     company_enumeration_text = generate_company_text(company_list)
     formatted_intro_text = presentation_text_template.format(company_text=company_enumeration_text, company_group=company_group, num_of_APG=unique_categories_amount)
-    print(formatted_intro_text)
-    shapes[3].text = formatted_intro_text
-    presentation_path = REPORTS_DIRECTORY / f'{report_year}_{report_type}' / company_group / f'{report_year}_{report_type}_{company_group}.pptx'
+    presentation.slides[1].shapes[3].text = formatted_intro_text
+    presentation_path = REPORTS_DIRECTORY / f'{report_year}_{report_type}' / company_group / f'Kıyaslama Raporu {report_year}_{report_type}_{company_group}.pptx'
     # Create the directories if they don't exist
     presentation_path.parent.mkdir(parents=True, exist_ok=True)
     presentation.save(presentation_path)
 
+    logger.info(f"Saved the presentation for {company_group} to {presentation_path.relative_to(MAIN_DIRECTORY)}")
 
 # This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
 if __name__ == "__main__":
@@ -313,7 +319,7 @@ if __name__ == "__main__":
         merged_df['filtered_mean'] = merged_df.apply(filtered_mean, axis=1)
         merged_df = pd.merge(merged_df, pptx_layout, left_on='APG No', right_on='APG Kodu', how='left')
 
-        # merged_df.to_excel(f"/desktop/{report_year}_{report_type}_{company_group}_Shuffled.xlsx", index=False)
+        # merged_df.to_excel(REPORTS_DIRECTORY / f'{report_year}_{report_type}' / company_group / f"{report_year}_{report_type}_{company_group}_Shuffled.xlsx", index=False)
 
         # Create a list to indicate a company group (0) or their rivals (1) for each company group
         num_of_group_companies = len(company_list)
