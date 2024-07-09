@@ -1,0 +1,24 @@
+# Relative path to C:/Users/%USERNAME%/MRC/MRC - MI9050_Various_Benchmark/Main_Directory
+# Since the username in the common path is dynamic, we use a path that is relative to the main directory.
+MASTER_FILE: Alınan Veriler/2023/2.Dönem/2023_YILLIK_MASTER_DOSYA.xlsx
+TEMPLATE_PATH: Sunum_Şablonları/Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Template.pptx
+
+# Choices for report types
+REPORT_TYPE_CHOICES: [yariyillik, yillik]  # Doesn't need to change at all. Maximum 2 values.
+
+# Choices for years and periods
+REPORT_YEAR: 2023
+REPORT_TYPE: yillik  # Should be in REPORT_TYPE_CHOICES
+
+# Sigma value for outlier detection.
+# The values that are outside of the range (mean - sigma * std, mean + sigma * std) are considered as outliers.
+SIGMA: 3
+
+# Presentation pages and annotation offset settings
+PRESENTATION_PAGES: [0, 1, 2, 3, 17, 21, 25, 42, 68, 84, 103]
+ANNOTATION_OFFSET_PIXELS: [-5, 5]
+
+# Plot appearance settings
+HORIZONTAL_MEAN_COLOR: purple
+HORIZONTAL_MEAN_ALPHA: 0.7
+FONT_SIZE: 10.5

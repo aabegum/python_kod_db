@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 # Standard library imports
-import argparse
 import json
 import logging
 from pathlib import Path
@@ -18,6 +17,7 @@ from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.util import Cm, Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+import yaml
 
 # Configure seaborn
 sns.set_style(style="whitegrid")
@@ -35,20 +35,21 @@ ILLEGAL_WINDOWS_PATH_CHARACTERS = re.compile(r'[\\/:*?"<>|]')
 
 # Define the directory paths
 CODING_DIRECTORY = Path(__file__).parent
-HOME_DIRECTORY = Path.home()
-BENCHMARK_DIRECTORY = HOME_DIRECTORY / "MRC" / "MRC - MI9050_Various_Benchmark"
-MAIN_DIRECTORY = BENCHMARK_DIRECTORY / "Main_Directory"
-WORKING_DIRECTORY = MAIN_DIRECTORY / "Alınan Veriler/2023/2.Dönem"
-TEMPLATE_DIRECTORY = MAIN_DIRECTORY / "Sunum_Şablonları"
+MAIN_DIRECTORY = CODING_DIRECTORY.parent
 GRAPHICS_DIRECTORY = MAIN_DIRECTORY / "Grafikler"
 REPORTS_DIRECTORY = MAIN_DIRECTORY / "Raporlar"
 
 # Define the file paths
-MASTER_FILE = WORKING_DIRECTORY / "2023_YILLIK_MASTER_DOSYA.xlsx"
-YARIYIL_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yarıyıl_Raporu_Template.pptx"
-YILSONU_TEMPLATE_PATH = TEMPLATE_DIRECTORY / "Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Template.pptx"
+CONFIG_PATH = CODING_DIRECTORY / "config.yaml"
 COMPANY_GROUPS_PATH = CODING_DIRECTORY / "company_groups.json"
 PRESENTATION_INTRO_TEMPLATE_PATH = CODING_DIRECTORY / "presentation_intro_template.txt"
+
+# Load YAML configuration
+with CONFIG_PATH.open() as config_file:
+    config = yaml.safe_load(config_file)
+
+MASTER_FILE = MAIN_DIRECTORY / config['MASTER_FILE']
+TEMPLATE_PATH = MAIN_DIRECTORY / config['TEMPLATE_PATH']
 
 with COMPANY_GROUPS_PATH.open() as company_groups_file:
     COMPANY_GROUPS = json.load(company_groups_file)
@@ -56,31 +57,21 @@ with COMPANY_GROUPS_PATH.open() as company_groups_file:
 NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
 COMPANIES_RANGE = np.arange(1, NUM_OF_COMPANIES + 1)
 
-REPORT_TYPE_CHOICES = "yariyillik", "yillik"
-REPORT_TEMPLATE_FILES = {
-    "yariyillik": YARIYIL_TEMPLATE_PATH,
-    "yillik": YILSONU_TEMPLATE_PATH,
-}
+REPORT_TYPE_CHOICES = config['REPORT_TYPE_CHOICES']
+REPORT_YEAR = config['REPORT_YEAR']
+REPORT_TYPE = config['REPORT_TYPE']
 
-SIGMA: int = 3
+SIGMA: int = config['SIGMA']
 START_COL = 3
 END_COL = START_COL + NUM_OF_COMPANIES
 
 # PLOT PARAMETERS
-PRESENTATION_PAGES = {0, 1, 2, 3, 17, 21, 25, 42, 68, 84, 103}
-ANNOTATION_OFFSET_PIXELS = -5, 5
-HORIZONTAL_MEAN_COLOR = "purple"
-HORIZONTAL_MEAN_ALPHA = 0.7
-FONT_SIZE = 10.5
+PRESENTATION_PAGES = config['PRESENTATION_PAGES']
+ANNOTATION_OFFSET_PIXELS = tuple(config['ANNOTATION_OFFSET_PIXELS'])
+HORIZONTAL_MEAN_COLOR = config['HORIZONTAL_MEAN_COLOR']
+HORIZONTAL_MEAN_ALPHA = config['HORIZONTAL_MEAN_ALPHA']
+FONT_SIZE = config['FONT_SIZE']
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Create powerpoint files based on benchmark data')
-    parser.add_argument('year', type=int, help='Year of the data (e.g. 2023)')
-    parser.add_argument(
-        'type', type=str, choices=REPORT_TYPE_CHOICES,
-        help=f'Type of the data (must be {REPORT_TYPE_CHOICES[0]} or {REPORT_TYPE_CHOICES[1]})'
-    )
-    return parser.parse_args()
 
 def generate_company_text(company_list):
     company_lines = []
@@ -211,11 +202,10 @@ def standardgraph(row) -> plt.Figure:
 
 
 def create_powerpoint():
-    template_file = REPORT_TEMPLATE_FILES[report_type]
-    graphics_save_directory = GRAPHICS_DIRECTORY / f'{report_year}_{report_type}' / company_group
+    graphics_save_directory = GRAPHICS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group
     # Create the directories if they don't exist
     graphics_save_directory.mkdir(parents=True, exist_ok=True)
-    presentation = Presentation(template_file)
+    presentation = Presentation(TEMPLATE_PATH)
 
     for _, row in merged_df.iterrows():
         slide = presentation.slides[row["Sayfa"]]
@@ -253,7 +243,7 @@ def create_powerpoint():
 
     for idx, shape in enumerate(bulgu_shapes):
         filtered_mean_value = merged_df.iloc[idx]["filtered_mean"]
-        shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {filtered_mean_value} olarak tespit edilmiştir.'
+        shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {filtered_mean_value:.2f} olarak tespit edilmiştir.'
         paragraphs = shape.text_frame.paragraphs
         paragraphs[0].font.bold = True
         for paragraph in paragraphs:
@@ -272,14 +262,14 @@ def create_powerpoint():
             xml_slides.remove(slides[slide_num])
 
     # ilk ve ikinci slaytda yılı ve şirket ismini değiştirme
-    ay = 6 if report_type == REPORT_TYPE_CHOICES[0] else 12
-    presentation.slides[0].shapes[3].text = f'{report_year} Yılı {ay} Aylık Döneme Ait Performans Göstergesi Sonuçları'
+    ay = 6 if REPORT_TYPE == REPORT_TYPE_CHOICES[0] else 12
+    presentation.slides[0].shapes[3].text = f'{REPORT_YEAR} Yılı {ay} Aylık Döneme Ait Performans Göstergesi Sonuçları'
 
     presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text()
     company_enumeration_text = generate_company_text(company_list)
     formatted_intro_text = presentation_text_template.format(company_text=company_enumeration_text, company_group=company_group, num_of_APG=unique_categories_amount)
     presentation.slides[1].shapes[3].text = formatted_intro_text
-    presentation_path = REPORTS_DIRECTORY / f'{report_year}_{report_type}' / company_group / f'Kıyaslama Raporu {report_year}_{report_type}_{company_group}.pptx'
+    presentation_path = REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f'Kıyaslama Raporu {REPORT_YEAR}_{REPORT_TYPE}_{company_group}.pptx'
     # Create the directories if they don't exist
     presentation_path.parent.mkdir(parents=True, exist_ok=True)
     presentation.save(presentation_path)
@@ -288,10 +278,6 @@ def create_powerpoint():
 
 # This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
 if __name__ == "__main__":
-    args = parse_arguments()
-    report_year = args.year
-    report_type = args.type
-
     # Read the data from the Excel file and divide it into two DataFrames for the data and the layout
     dataframe_dict = pd.read_excel(MASTER_FILE, sheet_name=["2023_Total_Veriler", "pptx_layout"])
     df = dataframe_dict["2023_Total_Veriler"]
@@ -319,7 +305,7 @@ if __name__ == "__main__":
         merged_df['filtered_mean'] = merged_df.apply(filtered_mean, axis=1)
         merged_df = pd.merge(merged_df, pptx_layout, left_on='APG No', right_on='APG Kodu', how='left')
 
-        # merged_df.to_excel(REPORTS_DIRECTORY / f'{report_year}_{report_type}' / company_group / f"{report_year}_{report_type}_{company_group}_Shuffled.xlsx", index=False)
+        # merged_df.to_excel(REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f"{REPORT_YEAR}_{REPORT_TYPE}_{company_group}_Shuffled.xlsx", index=False)
 
         # Create a list to indicate a company group (0) or their rivals (1) for each company group
         num_of_group_companies = len(company_list)
