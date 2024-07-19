@@ -5,26 +5,21 @@ import json
 import logging
 from pathlib import Path
 import re
-import warnings
 
 # Third-party library imports
+from matplotlib.colors import ListedColormap
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.ticker import Formatter
 from pptx import Presentation
-from pptx.chart.data import CategoryChartData
-from pptx.util import Cm, Inches, Pt
+from pptx.util import Pt
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+import seaborn as sns
 import yaml
 
 # Configure seaborn
 sns.set_style(style="whitegrid")
 sns.set_palette("muted")
-
-# Ignore warnings
-warnings.filterwarnings("ignore")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -193,8 +188,8 @@ def standardgraph(row) -> plt.Figure:
         )
 
     # set the y-label to indicate that the corresponding KPI is in millions TL
-    if row["Birim"] == "TL":  # MILYON TL???
-        ax.set(ylabel='Milyon TL')
+    if row["Birim"] == "TL":
+        ax.set(ylabel='TL')
 
     # Set y-axis tick labels if needed
     if row["Birim"] == "%":
@@ -284,21 +279,36 @@ def create_powerpoint():
 # This line ensures that the code is only run when the script is executed directly, not when it is imported as a module.
 if __name__ == "__main__":
     # Read the data from the Excel file and divide it into two DataFrames for the data and the layout
-    dataframe_dict = pd.read_excel(MASTER_FILE, sheet_name=["2023_Total_Veriler", "pptx_layout"])
-    df = dataframe_dict["2023_Total_Veriler"]
+    dataframe_dict = pd.read_excel(MASTER_FILE, sheet_name=[f"{REPORT_YEAR}_Total_Veriler", "pptx_layout"])
+    df = dataframe_dict[f"{REPORT_YEAR}_Total_Veriler"]
     pptx_layout = dataframe_dict["pptx_layout"]
 
+    merged_df = pd.merge(df, pptx_layout, left_on='APG No', right_on='APG Kodu', how='left')
+    merged_df.Sayfa = merged_df.Sayfa.astype(int)
+
     # Add Category from APG No
-    df['Category No'] = df['APG No'].str.split('.').str[0]
-    unique_categories_amount = df['Category No'].nunique()
+    merged_df['Category No'] = merged_df['APG No'].str.split('.').str[0]
+    # Extract subcategory using regex to group EK APG No's into a common category of APG No's
+    merged_df['APG Group'] = merged_df['APG No'].str.extract(r'(\w+\.\d+)')[0]
+    unique_categories_amount = merged_df['Category No'].nunique()
+
+    stacked_df = merged_df[merged_df.Grafik_tipi == "stacked"][["Category No", "APG No"]]
+
+    # Creating the dictionary
+    category_to_apg_dict = stacked_df.groupby('Category No')['APG No'].apply(list).to_dict()
 
     # Add a new column to the DataFrame that concatenates the APG No and APG İsmi
-    df['APG Full Name'] = df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
+    merged_df['APG Full Name'] = merged_df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
 
     for company_group, company_list in COMPANY_GROUPS.items():
+        # Create a list to indicate a company group (0) or their rivals (1) for each company group
+        num_of_group_companies = len(company_list)
+        num_of_other_companies = NUM_OF_COMPANIES - num_of_group_companies
+        company_color_indicator = [0] * num_of_group_companies + [1] * num_of_other_companies
+
         # Shuffle columns for each group and store in a list
         shuffled_groups = []
-        for _, group in df.groupby('Category No'):
+        for _, group in merged_df.groupby('Category No'):
             shuffled_group = shuffle_columns(group, company_list)
             shuffled_group.columns.values[START_COL:END_COL] = COMPANIES_RANGE
             shuffled_groups.append(shuffled_group)
@@ -308,13 +318,6 @@ if __name__ == "__main__":
 
         # Apply the filtered_mean function to each row and create a new column
         merged_df['filtered_mean'] = merged_df.apply(filtered_mean, axis=1)
-        merged_df = pd.merge(merged_df, pptx_layout, left_on='APG No', right_on='APG Kodu', how='left')
-
         # merged_df.to_excel(REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f"{REPORT_YEAR}_{REPORT_TYPE}_{company_group}_Shuffled.xlsx", index=False)
-
-        # Create a list to indicate a company group (0) or their rivals (1) for each company group
-        num_of_group_companies = len(company_list)
-        num_of_other_companies = NUM_OF_COMPANIES - num_of_group_companies
-        company_color_indicator = [0] * num_of_group_companies + [1] * num_of_other_companies
 
         create_powerpoint()
