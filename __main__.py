@@ -148,14 +148,13 @@ def shuffle_columns(df, company_list):
     # New column order: first the fixed columns, then the company_list, then the shuffled columns
     new_column_order = fixed_columns[:START_COL] + company_list + shuffled_columns.tolist() + fixed_columns[START_COL:]
 
-    return df[new_column_order]
+    group_df = df[new_column_order]
+    group_df.columns.values[START_COL:END_COL] = COMPANIES_RANGE
+
+    return group_df
 
 
 def standardgraph(row) -> plt.Figure:
-    # Select the relevant columns and transpose the DataFrame and reset the index to companies
-    transposable = merged_df[["APG No"] + list(COMPANIES_RANGE)]
-    transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
-
     # If next line doesn't exist, the graph will be overwritten by each row. Somehow necessary.
     ax = plt.figure()
 
@@ -191,6 +190,7 @@ def standardgraph(row) -> plt.Figure:
 
     # Set y-axis tick labels if needed
     if row["Birim"] == "%":
+        ax.set_yticks(ax.get_yticks())
         ax.set_yticklabels(map(format_percentage, ax.get_yticks()))
 
     # draw horizontal mean value
@@ -203,23 +203,19 @@ def standardgraph(row) -> plt.Figure:
     return ax.get_figure()
 
 def stackedgraph(row):
-    transposable = merged_df[["APG No"] + list(COMPANIES_RANGE)]
-    transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
-
     stacked_apg_nos = category_to_apg_dict[row["Category No"]]
     ax = plt.figure()
     ax = transposed[stacked_apg_nos].plot(kind='bar', stacked=True)
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.set_xticks(COMPANIES_RANGE)
     ax.set_xticklabels(COMPANIES_RANGE)
+    ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels(map(format_percentage, ax.get_yticks()))
 
     return ax.get_figure()
 
 
 def overlayedgraph(row):
-    transposable = merged_df[["APG No"] + list(COMPANIES_RANGE)]
-    transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
-
     apg = row["APG Group"]
     alt_bilgi = f"{apg} EK"
 
@@ -228,6 +224,7 @@ def overlayedgraph(row):
 
     # bar plot (sub-info)
     fig, ax1 = plt.subplots(figsize=(8, 4))
+    ax1.set_xticks(COMPANIES_RANGE)
     ax1.set_xticklabels(COMPANIES_RANGE)
     ax1.bar(x=transposed.companies,
             height=transposed[alt_bilgi],
@@ -276,18 +273,20 @@ def create_powerpoint():
     graphics_save_directory.mkdir(parents=True, exist_ok=True)
     presentation = Presentation(TEMPLATE_PATH)
 
-    for _, row in merged_df.iterrows():
+    for _, row in shuffled_df.iterrows():
         slide = presentation.slides[row["Sayfa"]]
         left, top, height, width = row["Left"], row["Top"], row["Height"], row["Width"]
         grafik_tipi = row["Grafik_tipi"]
 
-        create_figure_function_mapping = {
-            "standard": standardgraph,
-            "stacked": stackedgraph,
-            "overlayed": overlayedgraph,
-        }
-        create_figure_function = create_figure_function_mapping[grafik_tipi]
-        fig = create_figure_function(row)
+        # Call the appropriate function based on grafik_tipi
+        if grafik_tipi == "standard":
+            fig = standardgraph(row)
+        elif grafik_tipi == "stacked":
+            fig = stackedgraph(row)
+        elif grafik_tipi == "overlayed":
+            fig = overlayedgraph(row)
+        else:
+            raise ValueError(f"Unknown grafik_tipi: {grafik_tipi}")
 
         # save figure to local directory
         apg_pic_name = f'{row["APG Full Name"]}.png'
@@ -299,6 +298,8 @@ def create_powerpoint():
         # Save the figure to the local directory
         fig.savefig(pic_path, bbox_inches='tight')
         logger.info(f"Saved the figure for {row['APG No']} to {pic_path.relative_to(MAIN_DIRECTORY)}")
+        # Close the figure to free up resources
+        plt.close(fig)
 
         # Add the figure to the slide
         slide.shapes.add_picture(str(pic_path), left, top, width, height)
@@ -310,7 +311,7 @@ def create_powerpoint():
     ]
 
     for idx, shape in enumerate(bulgu_shapes):
-        filtered_mean_value = merged_df.iloc[idx]["filtered_mean"]
+        filtered_mean_value = shuffled_df.iloc[idx]["filtered_mean"]
         shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {filtered_mean_value:.2f} olarak tespit edilmiştir.'
         paragraphs = shape.text_frame.paragraphs
         paragraphs[0].font.bold = True
@@ -318,11 +319,11 @@ def create_powerpoint():
             paragraph.font.size = Pt(FONT_SIZE)
 
     presentation_pages = set(PRESENTATION_PAGES)  # sunum başlıkları ve APG başlıklarının olduğu sayfalar
-    unique_graph_pages = set(merged_df.Sayfa)
+    unique_graph_pages = set(shuffled_df.Sayfa)
     presentation_pages.update(unique_graph_pages)  # Add the graph pages to the set
 
     # removing the pages that are not selected
-    max_page_num = merged_df.Sayfa.max()
+    max_page_num = shuffled_df.Sayfa.max()
     for slide_num in range(max_page_num, 0, -1):
         if slide_num not in presentation_pages:
             xml_slides = presentation.slides._sldIdLst
@@ -371,17 +372,21 @@ if __name__ == "__main__":
         company_color_indicator = [0] * num_of_group_companies + [1] * num_of_other_companies
 
         # Shuffle columns for each group and store in a list
-        shuffled_groups = []
-        for _, group in merged_df.groupby('Category No'):
-            shuffled_group = shuffle_columns(group, company_list)
-            shuffled_group.columns.values[START_COL:END_COL] = COMPANIES_RANGE
-            shuffled_groups.append(shuffled_group)
+        shuffled_groups = [
+            shuffle_columns(group, company_list)
+            for _, group
+            in merged_df.groupby('Category No')
+        ]
 
         # Merge the shuffled groups back together and reset the column names
-        merged_df = pd.concat(shuffled_groups).reset_index(drop=True)
+        shuffled_df = pd.concat(shuffled_groups).reset_index(drop=True)
 
         # Apply the filtered_mean function to each row and create a new column
-        merged_df['filtered_mean'] = merged_df.apply(filtered_mean, axis=1)
-        # merged_df.to_excel(REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f"{REPORT_YEAR}_{REPORT_TYPE}_{company_group}_Shuffled.xlsx", index=False)
+        shuffled_df['filtered_mean'] = shuffled_df.apply(filtered_mean, axis=1)
+        # shuffled_df.to_excel(REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f"{REPORT_YEAR}_{REPORT_TYPE}_{company_group}_Shuffled.xlsx", index=False)
+
+        # Select the relevant columns and transpose the DataFrame and reset the index to companies
+        transposable = shuffled_df[["APG No"] + list(COMPANIES_RANGE)]
+        transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
 
         create_powerpoint()
