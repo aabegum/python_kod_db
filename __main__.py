@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 # Standard library imports
-import json
 import logging
 from pathlib import Path
 import re
@@ -46,13 +45,12 @@ with CONFIG_PATH.open() as config_file:
 MASTER_FILE = MAIN_DIRECTORY / config['MASTER_FILE']
 TEMPLATE_PATH = MAIN_DIRECTORY / config['TEMPLATE_PATH']
 
-with COMPANY_GROUPS_PATH.open() as company_groups_file:
-    COMPANY_GROUPS = json.load(company_groups_file)
+COMPANY_GROUPS = config['COMPANY_GROUPS']
 
 NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
 COMPANIES_RANGE = np.arange(1, NUM_OF_COMPANIES + 1)
 
-REPORT_TYPE_CHOICES = config['REPORT_TYPE_CHOICES']
+REPORT_TYPE_CHOICES = "yariyillik", "yillik"
 REPORT_YEAR = config['REPORT_YEAR']
 REPORT_TYPE = config['REPORT_TYPE']
 
