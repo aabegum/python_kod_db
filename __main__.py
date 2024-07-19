@@ -204,6 +204,73 @@ def standardgraph(row) -> plt.Figure:
 
     return ax.get_figure()
 
+def stackedgraph(row):
+    transposable = merged_df[["APG No"] + list(COMPANIES_RANGE)]
+    transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
+
+    stacked_apg_nos = category_to_apg_dict[row["Category No"]]
+    ax = plt.figure()
+    ax = transposed[stacked_apg_nos].plot(kind='bar', stacked=True)
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.set_xticklabels(COMPANIES_RANGE)
+    ax.set_yticklabels(map(format_percentage, ax.get_yticks()))
+
+    return ax.get_figure()
+
+
+def overlayedgraph(row):
+    transposable = merged_df[["APG No"] + list(COMPANIES_RANGE)]
+    transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
+
+    apg = row["APG Group"]
+    alt_bilgi = f"{apg} EK"
+
+    # create a custom colored map object
+    custom_color_map = ListedColormap(['cornflowerblue', 'coral'])
+
+    # bar plot (sub-info)
+    fig, ax1 = plt.subplots(figsize=(8, 4))
+    ax1.set_xticklabels(COMPANIES_RANGE)
+    ax1.bar(x=transposed.companies,
+            height=transposed[alt_bilgi],
+            color='#CCFFCC',
+            width=0.4,
+            zorder=2)
+    ax1.grid(visible=False)
+    ax1.set(ylabel=f"{alt_bilgi}\n(Çubuk Gösterim)")
+
+    for x, y in zip(transposed.companies, transposed[alt_bilgi]):
+        formatted_text = format_percentage(y) if row["Birim"] == "%" else str(y)
+        plt.text(x,
+                 0,
+                 formatted_text,
+                 horizontalalignment='center',
+                 verticalalignment='bottom')
+
+        # create the second (scatter) graph
+        ax2 = ax1.twinx()
+        ax2.scatter(
+            x=transposed.companies,
+            y=transposed[row['APG No']],
+            c=company_color_indicator,
+            cmap=custom_color_map,
+            zorder=3
+        )
+        ax2.grid(axis='y')
+        ax2.set(ylabel=row["APG Group"])
+
+        for company_index in COMPANIES_RANGE:
+            value = row[company_index]
+            formatted_value = format_percentage(value) if row["Birim"] == "%" else str(value)
+            plt.annotate(
+                text=formatted_value,
+                xy=(company_index, value),
+                xytext=(2,5),
+                textcoords="offset pixels",
+                zorder=4
+            )
+
+    return fig
 
 def create_powerpoint():
     graphics_save_directory = GRAPHICS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group
@@ -218,9 +285,8 @@ def create_powerpoint():
 
         create_figure_function_mapping = {
             "standard": standardgraph,
-            # "stacked": stackedgraph,
-            # "overlayed": overlayedgraph,
-            # "e316": e316
+            "stacked": stackedgraph,
+            "overlayed": overlayedgraph,
         }
         create_figure_function = create_figure_function_mapping[grafik_tipi]
         fig = create_figure_function(row)
