@@ -35,7 +35,6 @@ REPORTS_DIRECTORY = MAIN_DIRECTORY / "Raporlar"
 
 # Define the file paths
 CONFIG_PATH = CODING_DIRECTORY / "config.yaml"
-COMPANY_GROUPS_PATH = CODING_DIRECTORY / "company_groups.json"
 PRESENTATION_INTRO_TEMPLATE_PATH = CODING_DIRECTORY / "presentation_intro_template.txt"
 
 # Load YAML configuration
