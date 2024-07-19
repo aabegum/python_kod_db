@@ -1,7 +1,7 @@
 Bu Rapor ile Kıyaslama Çalışmasına dahil olan Şirketlerin, çalışma çerçevesinde belirlenen Anahtar Performans Göstergeleri sonuçları sunulmaktadır.
 Her bir performans göstergesi için, o göstergeye ait tanım, kullanılan veri seti, formül ve temel bulgular (verilerin ortalaması, veri sunamayan şirket sayısı vb.) ilerleyen sayfalarda gösterilmektedir.
 İlgili anahtar performans göstergelerine ilişkin sonuçların gösterildiği grafiklerde;
-{company_text}
+{company_text}  arasında numaralandırılan Şirketler, Kıyaslama Çalışmasına dahil olan diğer Elektrik Dağıtım Şirketlerini temsil etmektedir.
 {company_group} haricindeki diğer Şirket verileri {num_of_APG} adet Anahtar Performans Göstergesinin her birinde aksi belirtilmedikçe farklı bir numara ile temsil edilmekte olup, bu eşleştirme sistem tarafından otomatik ve herhangi bir kurala bağlı olmadan yapılmaktadır.
 Şirketler tarafından veri sağlanmayan APG’ler, grafiklerde boş olarak gösterilmektedir.
 Söz konusu numaralandırmalar, 4. Uygulama Dönemi boyunca ortaya koyulacak tüm Raporlarda aynı sırayı takip edecektir. Böylelikle, geçmiş dönem veya yıla ilişkin kıyaslama yapılabilecektir.

@@ -73,15 +73,24 @@ HORIZONTAL_MEAN_ALPHA = config['HORIZONTAL_MEAN_ALPHA']
 FONT_SIZE = config['FONT_SIZE']
 
 
-def generate_company_text(company_list):
+def generate_presentation_intro_text(company_list) -> str:
+    presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text()
+
     company_lines = []
     for i, company in enumerate(company_list, start=1):
         line = f"- {i} numaralı Şirket, {company}'ı"
         if i == len(company_list):
             line += " temsil etmekte iken"
         company_lines.append(line)
-    company_lines.append(f"{num_of_group_companies + 1} - {NUM_OF_COMPANIES} arasında numaralandırılan Şirketler, Kıyaslama Çalışmasına dahil olan diğer Elektrik Dağıtım Şirketlerini temsil etmektedir.")
-    return "\n".join(company_lines)
+
+    company_lines.append(f"{num_of_group_companies + 1} - {NUM_OF_COMPANIES}")
+    company_enumeration_text = "\n".join(company_lines)
+    return presentation_text_template.format(
+        company_text=company_enumeration_text,
+        company_group=company_group,
+        num_of_APG=unique_categories_amount
+    )
+
 
 def filtered_mean(row) -> int:
     """
@@ -264,11 +273,7 @@ def create_powerpoint():
     # ilk ve ikinci slaytda yılı ve şirket ismini değiştirme
     ay = 6 if REPORT_TYPE == REPORT_TYPE_CHOICES[0] else 12
     presentation.slides[0].shapes[3].text = f'{REPORT_YEAR} Yılı {ay} Aylık Döneme Ait Performans Göstergesi Sonuçları'
-
-    presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text()
-    company_enumeration_text = generate_company_text(company_list)
-    formatted_intro_text = presentation_text_template.format(company_text=company_enumeration_text, company_group=company_group, num_of_APG=unique_categories_amount)
-    presentation.slides[1].shapes[3].text = formatted_intro_text
+    presentation.slides[1].shapes[3].text = generate_presentation_intro_text(company_list)
     presentation_path = REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f'Kıyaslama Raporu {REPORT_YEAR}_{REPORT_TYPE}_{company_group}.pptx'
     # Create the directories if they don't exist
     presentation_path.parent.mkdir(parents=True, exist_ok=True)
