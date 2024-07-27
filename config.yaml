@@ -31,6 +31,9 @@ REPORT_TYPE: yillik  # Should be one of REPORT_TYPE_CHOICES (yariyillik, yillik)
 # The values that are outside the range (mean - sigma * std, mean + sigma * std) are considered as outliers.
 SIGMA: 3
 
+# Decimal digits for the percentage values in the graphs.
+DEFAULT_DECIMAL_DIGITS: 2
+
 # Presentation pages and annotation offset settings
 PRESENTATION_PAGES: [0, 1, 2, 3, 17, 21, 25, 42, 68, 84, 103]
 ANNOTATION_OFFSET_PIXELS: [-5, 5]
@@ -39,3 +42,5 @@ ANNOTATION_OFFSET_PIXELS: [-5, 5]
 HORIZONTAL_MEAN_COLOR: purple
 HORIZONTAL_MEAN_ALPHA: 0.7
 FONT_SIZE: 10.5
+OVERLAY_GRAPH_COLOR_MAP: ['cornflowerblue', 'coral']
+OVERLAY_GRAPH_BAR_COLOR: '#CCFFCC'

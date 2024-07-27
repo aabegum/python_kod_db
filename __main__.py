@@ -65,6 +65,9 @@ REPORT_TYPE = config['REPORT_TYPE']
 SIGMA: int = config['SIGMA']
 START_COL = 3
 END_COL = START_COL + NUM_OF_COMPANIES
+DEFAULT_DECIMAL_DIGITS = config['DEFAULT_DECIMAL_DIGITS']
+
+# Define the company color indicators
 GROUP_COMPANY_INDICATOR = 0
 RIVAL_COMPANY_INDICATOR = 1
 
@@ -74,6 +77,8 @@ ANNOTATION_OFFSET_PIXELS = tuple(config['ANNOTATION_OFFSET_PIXELS'])
 HORIZONTAL_MEAN_COLOR = config['HORIZONTAL_MEAN_COLOR']
 HORIZONTAL_MEAN_ALPHA = config['HORIZONTAL_MEAN_ALPHA']
 FONT_SIZE = config['FONT_SIZE']
+OVERLAY_GRAPH_COLOR_MAP = ListedColormap(config['OVERLAY_GRAPH_COLOR_MAP'])
+OVERLAY_GRAPH_BAR_COLOR = config['OVERLAY_GRAPH_BAR_COLOR']
 
 
 def generate_presentation_intro_text(company_list) -> str:
@@ -128,12 +133,13 @@ def filtered_mean(row) -> int:
 
 
 
-def format_percentage(value: float, decimal_digits: int = 2) -> str:
+def format_percentage(value: float, decimal_digits: int = DEFAULT_DECIMAL_DIGITS) -> str:
     """
-    Format a float value as a percentage with 2 decimal points and the percent sign in front.
+    Format a float value as a percentage with 'DEFAULT_DECIMAL_DIGITS' decimal points and the percent sign in front.
 
     Parameters:
     value (float): The float value to be formatted as a percentage.
+    decimal_digits (int): The number of decimal digits to include. Default is 'DEFAULT_DECIMAL_DIGITS'.
 
     Returns:
     str: The formatted percentage string.
@@ -236,11 +242,13 @@ def overlayedgraph(row):
     fig, ax1 = plt.subplots(figsize=(8, 4))
     ax1.set_xticks(COMPANIES_RANGE)
     ax1.set_xticklabels(COMPANIES_RANGE)
-    ax1.bar(x=transposed.companies,
-            height=transposed[alt_bilgi],
-            color='#CCFFCC',
-            width=0.4,
-            zorder=2)
+    ax1.bar(
+        x=transposed.companies,
+        height=transposed[alt_bilgi],
+        color=OVERLAY_GRAPH_BAR_COLOR,
+        width=0.4,
+        zorder=2
+    )
     ax1.grid(visible=False)
     ax1.set(ylabel=f"{alt_bilgi}\n(Çubuk Gösterim)")
 
@@ -258,7 +266,7 @@ def overlayedgraph(row):
             x=transposed.companies,
             y=transposed[row['APG No']],
             c=company_color_indicator,
-            cmap=custom_color_map,
+            cmap=OVERLAY_GRAPH_COLOR_MAP,
             zorder=3
         )
         ax2.grid(axis='y')
