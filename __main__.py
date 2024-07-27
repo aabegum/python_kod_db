@@ -57,6 +57,8 @@ REPORT_TYPE = config['REPORT_TYPE']
 SIGMA: int = config['SIGMA']
 START_COL = 3
 END_COL = START_COL + NUM_OF_COMPANIES
+GROUP_COMPANY_INDICATOR = 0
+RIVAL_COMPANY_INDICATOR = 1
 
 # PLOT PARAMETERS
 PRESENTATION_PAGES = config['PRESENTATION_PAGES']
@@ -369,7 +371,7 @@ if __name__ == "__main__":
         # Create a list to indicate a company group (0) or their rivals (1) for each company group
         num_of_group_companies = len(company_list)
         num_of_other_companies = NUM_OF_COMPANIES - num_of_group_companies
-        company_color_indicator = [0] * num_of_group_companies + [1] * num_of_other_companies
+        company_color_indicator = [GROUP_COMPANY_INDICATOR] * num_of_group_companies + [RIVAL_COMPANY_INDICATOR] * num_of_other_companies
 
         # Shuffle columns for each group and store in a list
         shuffled_groups = [
