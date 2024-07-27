@@ -26,6 +26,9 @@ logger = logging.getLogger()
 
 # Define the regular expression pattern to match illegal characters in Windows file paths
 ILLEGAL_WINDOWS_PATH_CHARACTERS = re.compile(r'[\\/:*?"<>|\n]')
+
+# Define the regular expression pattern to match the APG No without the pattern
+APG_NO_PATTERN = re.compile(r'(\w+\.\d+)')
 ENCODING = 'utf-8'
 
 # Define the directory paths
@@ -361,8 +364,7 @@ if __name__ == "__main__":
     # Add Category from APG No
     merged_df['Category No'] = merged_df['APG No'].str.split('.').str[0]
     # Extract subcategory using regex to group EK APG No's into a common category of APG No's
-    merged_df['APG Group'] = merged_df['APG No'].str.extract(r'(\w+\.\d+)')[0]
-    unique_categories_amount = merged_df['Category No'].nunique()
+    merged_df['APG Group'] = merged_df['APG No'].str.extract(APG_NO_PATTERN)[0]
 
     stacked_df = merged_df[merged_df.Grafik_tipi == "stacked"][["Category No", "APG No"]]
 
