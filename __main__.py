@@ -25,7 +25,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger()
 
 # Define the regular expression pattern to match illegal characters in Windows file paths
-ILLEGAL_WINDOWS_PATH_CHARACTERS = re.compile(r'[\\/:*?"<>|]')
+ILLEGAL_WINDOWS_PATH_CHARACTERS = re.compile(r'[\\/:*?"<>|\n]')
+ENCODING = 'utf-8'
 
 # Define the directory paths
 CODING_DIRECTORY = Path(__file__).parent
@@ -38,7 +39,7 @@ CONFIG_PATH = CODING_DIRECTORY / "config.yaml"
 PRESENTATION_INTRO_TEMPLATE_PATH = CODING_DIRECTORY / "presentation_intro_template.txt"
 
 # Load YAML configuration
-with CONFIG_PATH.open() as config_file:
+with CONFIG_PATH.open(encoding=ENCODING) as config_file:
     config = yaml.safe_load(config_file)
 
 MASTER_FILE = MAIN_DIRECTORY / config['MASTER_FILE']
@@ -66,7 +67,7 @@ FONT_SIZE = config['FONT_SIZE']
 
 
 def generate_presentation_intro_text(company_list) -> str:
-    presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text()
+    presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text(encoding=ENCODING)
 
     company_lines = []
     for i, company in enumerate(company_list, start=1):
