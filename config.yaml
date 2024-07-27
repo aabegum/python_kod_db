@@ -7,6 +7,7 @@ TEMPLATE_PATH: Sunum_Şablonları/Kıyaslama_Çalışması_Yıl_Sonu_Raporu_Temp
 # - The key is the group name.
 # - The value is a list of companies in that group.
 COMPANY_GROUPS:
+  MRC: []  # MRC will be used for the comparison of all companies. Therefore, it is represented as an empty list.
   AYDEM: ["ADM EDAŞ", "GDZ EDAŞ"]
   ENERJİSA: ["BAŞKENT EDAŞ", "AYEDAŞ", "TOROSLAR EDAŞ"]
   AKSA: ["FIRAT EDAŞ", "ÇORUH EDAŞ"]
@@ -16,7 +17,11 @@ COMPANY_GROUPS:
   VEDAŞ: ["VEDAŞ"]
   UEDAŞ: ["UEDAŞ"]
   ARAS EDAŞ: ["ARAS EDAŞ"]
-  MRC: []  # MRC will be used for the comparison of all companies. Therefore, it is represented as an empty list.
+
+# This section contains the companies that are excluded from the report.
+# Note that these groups are not included in the report, but they are used for the comparison of all companies.
+# Usually it is an empty list, but it can be used for debugging purposes.
+COMPANY_GROUPS_EXCLUDED_FROM_REPORT: []
 
 # Choices for years and periods
 REPORT_YEAR: 2023

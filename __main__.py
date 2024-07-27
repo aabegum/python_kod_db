@@ -46,6 +46,11 @@ MASTER_FILE = MAIN_DIRECTORY / config['MASTER_FILE']
 TEMPLATE_PATH = MAIN_DIRECTORY / config['TEMPLATE_PATH']
 
 COMPANY_GROUPS = config['COMPANY_GROUPS']
+COMPANY_GROUPS_EXCLUDED_FROM_REPORT = config['COMPANY_GROUPS_EXCLUDED_FROM_REPORT']
+
+# Check if the companies in COMPANY_GROUPS_EXCLUDED_FROM_REPORT are also in COMPANY_GROUPS
+if set(COMPANY_GROUPS_EXCLUDED_FROM_REPORT) - set(COMPANY_GROUPS):
+    raise ValueError("COMPANY_GROUPS_EXCLUDED_FROM_REPORT contains companies that are not in COMPANY_GROUPS. Please check the config.yaml file.")
 
 NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
 COMPANIES_RANGE = np.arange(1, NUM_OF_COMPANIES + 1)
@@ -368,6 +373,8 @@ if __name__ == "__main__":
     merged_df['APG Full Name'] = merged_df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
 
     for company_group, company_list in COMPANY_GROUPS.items():
+        if company_group in COMPANY_GROUPS_EXCLUDED_FROM_REPORT:
+            continue
         # Create a list to indicate a company group (0) or their rivals (1) for each company group
         num_of_group_companies = len(company_list)
         num_of_other_companies = NUM_OF_COMPANIES - num_of_group_companies
