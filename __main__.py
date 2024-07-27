@@ -81,18 +81,29 @@ OVERLAY_GRAPH_COLOR_MAP = ListedColormap(config['OVERLAY_GRAPH_COLOR_MAP'])
 OVERLAY_GRAPH_BAR_COLOR = config['OVERLAY_GRAPH_BAR_COLOR']
 
 
-def generate_presentation_intro_text(company_list) -> str:
+def generate_presentation_intro_text(company_list: list[str]) -> str:
+    """
+    Generate the introductory text for the presentation based on the company group.
+    company_list refers to the list of companies in the current company group.
+    This will be used in the first slide of the presentation.
+    """
+    # Load the presentation intro template from the template text file
     presentation_text_template = PRESENTATION_INTRO_TEMPLATE_PATH.read_text(encoding=ENCODING)
 
+    # Iterate through the company list and generate the text for each company in the company group
     company_lines = []
     for i, company in enumerate(company_list, start=1):
         line = f"- {i} numaralı Şirket, {company}'ı"
+        # Add the appropriate suffix for the last company in the list
         if i == len(company_list):
             line += " temsil etmekte iken"
         company_lines.append(line)
 
+    # Add the indicator for the remaining companies that doesn't belong to the group
     company_lines.append(f"{num_of_group_companies + 1} - {NUM_OF_COMPANIES}")
     company_enumeration_text = "\n".join(company_lines)
+
+    # Replace the placeholders in the template with the generated text
     return presentation_text_template.format(
         company_text=company_enumeration_text,
         company_group=company_group,
@@ -100,7 +111,7 @@ def generate_presentation_intro_text(company_list) -> str:
     )
 
 
-def filtered_mean(row) -> int:
+def filtered_mean(row: pd.Series) -> int:
     """
     Calculate the mean of each row within a specified number of standard deviations
     and add it to a new column named 'filtered_mean'.
@@ -147,7 +158,7 @@ def format_percentage(value: float, decimal_digits: int = DEFAULT_DECIMAL_DIGITS
     return "{:.{}f}%".format(value * 100, decimal_digits).replace('.', ',')
 
 
-def shuffle_columns(df, company_list):
+def shuffle_columns(df: pd.DataFrame, company_list: list[str]) -> pd.DataFrame:
     """
     Shuffle the columns of a DataFrame, excluding the first three and the last one.
     Place the company_list columns at the beginning of the shuffle range.
@@ -170,7 +181,10 @@ def shuffle_columns(df, company_list):
     return group_df
 
 
-def standardgraph(row) -> plt.Figure:
+def standardgraph(row: pd.Series) -> plt.Figure:
+    """
+    Create a standard scatter plot for the given row.
+    """
     # If next line doesn't exist, the graph will be overwritten by each row. Somehow necessary.
     ax = plt.figure()
 
@@ -200,7 +214,7 @@ def standardgraph(row) -> plt.Figure:
             textcoords="offset pixels"
         )
 
-    # set the y-label to indicate that the corresponding KPI is in millions TL
+    # set the y-label to indicate that the corresponding KPI is in TL
     if row["Birim"] == "TL":
         ax.set(ylabel='TL')
 
@@ -218,8 +232,12 @@ def standardgraph(row) -> plt.Figure:
 
     return ax.get_figure()
 
-def stackedgraph(row):
+def stackedgraph(row: pd.Series) -> plt.Figure:
+    """
+    Create a stacked bar plot for the given row.
+    """
     stacked_apg_nos = category_to_apg_dict[row["Category No"]]
+    # If next line doesn't exist, the graph will be overwritten by each row. Somehow necessary.
     ax = plt.figure()
     ax = transposed[stacked_apg_nos].plot(kind='bar', stacked=True)
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -231,12 +249,12 @@ def stackedgraph(row):
     return ax.get_figure()
 
 
-def overlayedgraph(row):
+def overlayedgraph(row: pd.Series) -> plt.Figure:
+    """
+    Create an overlayed bar and scatter plot for the given row
+    """
     apg = row["APG Group"]
     alt_bilgi = f"{apg} EK"
-
-    # create a custom colored map object
-    custom_color_map = ListedColormap(['cornflowerblue', 'coral'])
 
     # bar plot (sub-info)
     fig, ax1 = plt.subplots(figsize=(8, 4))
@@ -254,11 +272,13 @@ def overlayedgraph(row):
 
     for x, y in zip(transposed.companies, transposed[alt_bilgi]):
         formatted_text = format_percentage(y) if row["Birim"] == "%" else str(y)
-        plt.text(x,
-                 0,
-                 formatted_text,
-                 horizontalalignment='center',
-                 verticalalignment='bottom')
+        plt.text(
+            x,
+            0,
+            formatted_text,
+            horizontalalignment='center',
+            verticalalignment='bottom'
+        )
 
         # create the second (scatter) graph
         ax2 = ax1.twinx()
@@ -286,17 +306,17 @@ def overlayedgraph(row):
     return fig
 
 def create_powerpoint():
+    """
+    Create a PowerPoint presentation with the graphs for the given company group.
+    """
     graphics_save_directory = GRAPHICS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group
     # Create the directories if they don't exist
     graphics_save_directory.mkdir(parents=True, exist_ok=True)
     presentation = Presentation(TEMPLATE_PATH)
 
     for _, row in shuffled_df.iterrows():
-        slide = presentation.slides[row["Sayfa"]]
-        left, top, height, width = row["Left"], row["Top"], row["Height"], row["Width"]
-        grafik_tipi = row["Grafik_tipi"]
-
         # Call the appropriate function based on grafik_tipi
+        grafik_tipi = row["Grafik_tipi"]
         if grafik_tipi == "standard":
             fig = standardgraph(row)
         elif grafik_tipi == "stacked":
@@ -320,6 +340,8 @@ def create_powerpoint():
         plt.close(fig)
 
         # Add the figure to the slide
+        slide = presentation.slides[row["Sayfa"]]
+        left, top, height, width = row["Left"], row["Top"], row["Height"], row["Width"]
         slide.shapes.add_picture(str(pic_path), left, top, width, height)
 
     bulgu_shapes = [
@@ -329,8 +351,10 @@ def create_powerpoint():
     ]
 
     for idx, shape in enumerate(bulgu_shapes):
-        filtered_mean_value = shuffled_df.iloc[idx]["filtered_mean"]
-        shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {filtered_mean_value:.2f} olarak tespit edilmiştir.'
+        row = shuffled_df.iloc[idx]
+        filtered_mean_value = row["filtered_mean"]
+        formatted_filtered_mean = format_percentage(filtered_mean_value) if row["Birim"] == "%" else str(filtered_mean_value)
+        shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {formatted_filtered_mean} olarak tespit edilmiştir.'
         paragraphs = shape.text_frame.paragraphs
         paragraphs[0].font.bold = True
         for paragraph in paragraphs:
@@ -366,22 +390,25 @@ if __name__ == "__main__":
     df = dataframe_dict[f"{REPORT_YEAR}_Total_Veriler"]
     pptx_layout = dataframe_dict["pptx_layout"]
 
+    # Merge two sheets on their APG No
     merged_df = pd.merge(df, pptx_layout, left_on='APG No', right_on='APG Kodu', how='left')
+
+    # Make sure that the Sayfa column is an integer, otherwise it complains because automatically it assigns float
     merged_df.Sayfa = merged_df.Sayfa.astype(int)
 
     # Add Category from APG No
     merged_df['Category No'] = merged_df['APG No'].str.split('.').str[0]
+    unique_categories_amount = merged_df['Category No'].nunique()
+    # Add a new column to the DataFrame that concatenates the APG No and APG İsmi
+    merged_df['APG Full Name'] = merged_df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
     # Extract subcategory using regex to group EK APG No's into a common category of APG No's
     merged_df['APG Group'] = merged_df['APG No'].str.extract(APG_NO_PATTERN)[0]
 
+    # For the stacked graph, create a dictionary that maps each category to a list of APG No's
     stacked_df = merged_df[merged_df.Grafik_tipi == "stacked"][["Category No", "APG No"]]
-
-    # Creating the dictionary
     category_to_apg_dict = stacked_df.groupby('Category No')['APG No'].apply(list).to_dict()
 
-    # Add a new column to the DataFrame that concatenates the APG No and APG İsmi
-    merged_df['APG Full Name'] = merged_df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
-
+    # Create reports for each company group
     for company_group, company_list in COMPANY_GROUPS.items():
         if company_group in COMPANY_GROUPS_EXCLUDED_FROM_REPORT:
             continue
@@ -405,6 +432,7 @@ if __name__ == "__main__":
         # shuffled_df.to_excel(REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f"{REPORT_YEAR}_{REPORT_TYPE}_{company_group}_Shuffled.xlsx", index=False)
 
         # Select the relevant columns and transpose the DataFrame and reset the index to companies
+        # Will be used for the graphs
         transposable = shuffled_df[["APG No"] + list(COMPANIES_RANGE)]
         transposed = transposable.set_index("APG No").T.reset_index().rename(columns={"index": "companies"})
 
