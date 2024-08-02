@@ -74,6 +74,7 @@ RIVAL_COMPANY_INDICATOR = 1
 # PLOT PARAMETERS
 PRESENTATION_PAGES = config['PRESENTATION_PAGES']
 ANNOTATION_OFFSET_PIXELS = tuple(config['ANNOTATION_OFFSET_PIXELS'])
+ANNOTATION_FONT_SIZE = config['ANNOTATION_FONT_SIZE']
 HORIZONTAL_MEAN_COLOR = config['HORIZONTAL_MEAN_COLOR']
 HORIZONTAL_MEAN_ALPHA = config['HORIZONTAL_MEAN_ALPHA']
 FONT_SIZE = config['FONT_SIZE']
@@ -155,7 +156,7 @@ def format_percentage(value: float, decimal_digits: int = DEFAULT_DECIMAL_DIGITS
     Returns:
     str: The formatted percentage string.
     """
-    return "{:.{}f}%".format(value * 100, decimal_digits).replace('.', ',')
+    return "%{:.{}f}".format(value * 100, decimal_digits).replace('.', ',')
 
 
 def shuffle_columns(df: pd.DataFrame, company_list: list[str]) -> pd.DataFrame:
@@ -210,6 +211,7 @@ def standardgraph(row: pd.Series) -> plt.Figure:
         plt.annotate(
             text=formatted_value,
             xy=(company_index, value),
+            fontsize=ANNOTATION_FONT_SIZE,
             xytext=ANNOTATION_OFFSET_PIXELS,
             textcoords="offset pixels"
         )
@@ -255,6 +257,9 @@ def overlayedgraph(row: pd.Series) -> plt.Figure:
     """
     apg = row["APG Group"]
     alt_bilgi = f"{apg} EK"
+    ara_df = shuffled_df[shuffled_df["APG Group"] == apg]
+    main_row = ara_df[ara_df["APG No"] == apg].iloc[0]
+    ek_row = ara_df[ara_df["APG No"] == alt_bilgi].iloc[0]
 
     # bar plot (sub-info)
     fig, ax1 = plt.subplots(figsize=(8, 4))
@@ -268,10 +273,12 @@ def overlayedgraph(row: pd.Series) -> plt.Figure:
         zorder=2
     )
     ax1.grid(visible=False)
-    ax1.set(ylabel=f"{alt_bilgi}\n(Çubuk Gösterim)")
+    ax1.set(ylabel=f"{ek_row['APG İsmi']}\n(Çubuk Gösterim)")
+    ax1.set_yticks(ax1.get_yticks())
+    ax1.set_yticklabels(map(format_percentage if ek_row["Birim"] == "%" else str, ax1.get_yticks()))
 
     for x, y in zip(transposed.companies, transposed[alt_bilgi]):
-        formatted_text = format_percentage(y) if row["Birim"] == "%" else str(y)
+        formatted_text = format_percentage(y) if ek_row["Birim"] == "%" else str(y)
         plt.text(
             x,
             0,
@@ -280,28 +287,39 @@ def overlayedgraph(row: pd.Series) -> plt.Figure:
             verticalalignment='bottom'
         )
 
-        # create the second (scatter) graph
-        ax2 = ax1.twinx()
-        ax2.scatter(
-            x=transposed.companies,
-            y=transposed[row['APG No']],
-            c=company_color_indicator,
-            cmap=OVERLAY_GRAPH_COLOR_MAP,
-            zorder=3
-        )
-        ax2.grid(axis='y')
-        ax2.set(ylabel=row["APG Group"])
+    # create the second (scatter) graph
+    ax2 = ax1.twinx()
+    ax2.scatter(
+        x=transposed.companies,
+        y=transposed[main_row['APG No']],
+        c=company_color_indicator,
+        cmap=OVERLAY_GRAPH_COLOR_MAP,
+        zorder=3
+    )
 
-        for company_index in COMPANIES_RANGE:
-            value = row[company_index]
-            formatted_value = format_percentage(value) if row["Birim"] == "%" else str(value)
-            plt.annotate(
-                text=formatted_value,
-                xy=(company_index, value),
-                xytext=(2,5),
-                textcoords="offset pixels",
-                zorder=4
-            )
+    for company_index in COMPANIES_RANGE:
+        value = main_row[company_index]
+        formatted_value = format_percentage(value) if main_row["Birim"] == "%" else str(value)
+        plt.annotate(
+            text=formatted_value,
+            xy=(company_index, value),
+            xytext=(2,5),
+            textcoords="offset pixels",
+            fontsize=ANNOTATION_FONT_SIZE,
+            fontweight='normal',
+            zorder=4
+        )
+    ax2.tick_params(axis='y', labelsize=ANNOTATION_FONT_SIZE)
+    ax2.grid(axis='y')
+    ax2.set(ylabel=f"{main_row['APG İsmi']}\n(Nokta Gösterim)")
+    ax2.set_yticks(ax2.get_yticks())
+    ax2.set_yticklabels(map(format_percentage if main_row["Birim"] == "%" else str, ax2.get_yticks()))
+    # draw horizontal mean value
+    ax2.axhline(
+        y=main_row["filtered_mean"],
+        color=HORIZONTAL_MEAN_COLOR,
+        alpha=HORIZONTAL_MEAN_ALPHA,
+    )
 
     return fig
 
