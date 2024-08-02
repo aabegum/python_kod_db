@@ -10,7 +10,6 @@ COMPANY_GROUPS:
   MRC: []  # MRC will be used for the comparison of all companies. Therefore, it is represented as an empty list.
   AYDEM: ["ADM EDAŞ", "GDZ EDAŞ"]
   ENERJİSA: ["BAŞKENT EDAŞ", "AYEDAŞ", "TOROSLAR EDAŞ"]
-  AKSA: ["FIRAT EDAŞ", "ÇORUH EDAŞ"]
   SEDAŞ: ["SEDAŞ"]
   YEDAŞ: ["YEDAŞ"]
   TREDAŞ: ["TREDAŞ"]
