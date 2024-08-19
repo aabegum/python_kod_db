@@ -331,6 +331,16 @@ def create_powerpoint():
     graphics_save_directory.mkdir(parents=True, exist_ok=True)
     presentation = Presentation(TEMPLATE_PATH)
 
+    bulgu_shapes = [
+        shape for slide in presentation.slides
+        for shape in slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX and shape.text.startswith("Bulgu")
+    ]
+    if len(bulgu_shapes) != shuffled_df['Bulgu?'].sum():
+        raise ValueError("The number of 'Bulgu' shapes in the presentation does not match the number of 'Bulgu' rows in the DataFrame.")
+
+    bulgu_iterator = iter(bulgu_shapes)
+
     for _, row in shuffled_df.iterrows():
         # Call the appropriate function based on grafik_tipi
         grafik_tipi = row["Grafik_tipi"]
@@ -361,21 +371,16 @@ def create_powerpoint():
         left, top, height, width = row["Left"], row["Top"], row["Height"], row["Width"]
         slide.shapes.add_picture(str(pic_path), left, top, width, height)
 
-    bulgu_shapes = [
-        shape for slide in presentation.slides
-        for shape in slide.shapes
-        if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX and shape.text.startswith("Bulgu")
-    ]
-
-    for idx, shape in enumerate(bulgu_shapes):
-        row = shuffled_df.iloc[idx]
-        filtered_mean_value = row["filtered_mean"]
-        formatted_filtered_mean = format_percentage(filtered_mean_value) if row["Birim"] == "%" else str(filtered_mean_value)
-        shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {formatted_filtered_mean} olarak tespit edilmiştir.'
-        paragraphs = shape.text_frame.paragraphs
-        paragraphs[0].font.bold = True
-        for paragraph in paragraphs:
-            paragraph.font.size = Pt(FONT_SIZE)
+        # Add the bulgu text to the slide
+        if row["Bulgu?"]:
+            shape = next(bulgu_iterator)
+            filtered_mean_value = row["filtered_mean"]
+            formatted_filtered_mean = format_percentage(filtered_mean_value) if row["Birim"] == "%" else str(filtered_mean_value)
+            shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {formatted_filtered_mean} olarak tespit edilmiştir.'
+            paragraphs = shape.text_frame.paragraphs
+            paragraphs[0].font.bold = True
+            for paragraph in paragraphs:
+                paragraph.font.size = Pt(FONT_SIZE)
 
     # ilk ve ikinci slaytda yılı ve şirket ismini değiştirme
     ay = 6 if REPORT_TYPE == REPORT_TYPE_CHOICES[0] else 12
