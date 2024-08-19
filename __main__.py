@@ -72,7 +72,6 @@ GROUP_COMPANY_INDICATOR = 0
 RIVAL_COMPANY_INDICATOR = 1
 
 # PLOT PARAMETERS
-PRESENTATION_PAGES = config['PRESENTATION_PAGES']
 ANNOTATION_OFFSET_PIXELS = tuple(config['ANNOTATION_OFFSET_PIXELS'])
 ANNOTATION_FONT_SIZE = config['ANNOTATION_FONT_SIZE']
 HORIZONTAL_MEAN_COLOR = config['HORIZONTAL_MEAN_COLOR']
@@ -358,7 +357,7 @@ def create_powerpoint():
         plt.close(fig)
 
         # Add the figure to the slide
-        slide = presentation.slides[row["Sayfa"]]
+        slide = presentation.slides[row["Sayfa"] - 1]  # Because of 0-based indexing
         left, top, height, width = row["Left"], row["Top"], row["Height"], row["Width"]
         slide.shapes.add_picture(str(pic_path), left, top, width, height)
 
@@ -377,18 +376,6 @@ def create_powerpoint():
         paragraphs[0].font.bold = True
         for paragraph in paragraphs:
             paragraph.font.size = Pt(FONT_SIZE)
-
-    presentation_pages = set(PRESENTATION_PAGES)  # sunum başlıkları ve APG başlıklarının olduğu sayfalar
-    unique_graph_pages = set(shuffled_df.Sayfa)
-    presentation_pages.update(unique_graph_pages)  # Add the graph pages to the set
-
-    # removing the pages that are not selected
-    max_page_num = shuffled_df.Sayfa.max()
-    for slide_num in range(max_page_num, 0, -1):
-        if slide_num not in presentation_pages:
-            xml_slides = presentation.slides._sldIdLst
-            slides = list(xml_slides)
-            xml_slides.remove(slides[slide_num])
 
     # ilk ve ikinci slaytda yılı ve şirket ismini değiştirme
     ay = 6 if REPORT_TYPE == REPORT_TYPE_CHOICES[0] else 12
