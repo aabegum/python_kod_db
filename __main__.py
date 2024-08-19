@@ -451,7 +451,12 @@ if __name__ == "__main__":
 
         # Apply the filtered_mean function to each row and create a new column
         shuffled_df['filtered_mean'] = shuffled_df.apply(filtered_mean, axis=1)
-        # shuffled_df.to_excel(REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f"{REPORT_YEAR}_{REPORT_TYPE}_{company_group}_Shuffled.xlsx", index=False)
+
+        # Save the shuffled DataFrame to an Excel file
+        report_columns = ["APG No", "APG İsmi", "Birim", *COMPANIES_RANGE ,"filtered_mean"]
+        report_df = shuffled_df[report_columns]
+        REPORT_XLSX_PATH = REPORTS_DIRECTORY / f'{REPORT_YEAR}_{REPORT_TYPE}' / company_group / f"{REPORT_YEAR}_{REPORT_TYPE}_{company_group}_Shuffled.xlsx"
+        report_df.to_excel(REPORT_XLSX_PATH, index=False)
 
         # Select the relevant columns and transpose the DataFrame and reset the index to companies
         # Will be used for the graphs
