@@ -426,7 +426,7 @@ if __name__ == "__main__":
         shuffled_groups = [
             shuffle_columns(group, company_list)
             for _, group
-            in merged_df.groupby('Category No')
+            in merged_df.groupby('Category No', sort=False)  # Unless the sort is False, APGs are grouped in lexicographical order, not in the order they appear in the Excel file
         ]
 
         # Merge the shuffled groups back together and reset the column names
