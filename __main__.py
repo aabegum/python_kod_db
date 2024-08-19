@@ -53,7 +53,7 @@ COMPANY_GROUPS_EXCLUDED_FROM_REPORT = config['COMPANY_GROUPS_EXCLUDED_FROM_REPOR
 
 # Check if the companies in COMPANY_GROUPS_EXCLUDED_FROM_REPORT are also in COMPANY_GROUPS
 if set(COMPANY_GROUPS_EXCLUDED_FROM_REPORT) - set(COMPANY_GROUPS):
-    raise ValueError("COMPANY_GROUPS_EXCLUDED_FROM_REPORT contains companies that are not in COMPANY_GROUPS. Please check the config.yaml file.")
+    raise SystemExit("COMPANY_GROUPS_EXCLUDED_FROM_REPORT contains companies that are not in COMPANY_GROUPS. Please check the config.yaml file.")
 
 NUM_OF_COMPANIES = sum(len(companies) for companies in COMPANY_GROUPS.values())
 COMPANIES_RANGE = np.arange(1, NUM_OF_COMPANIES + 1)
@@ -348,7 +348,7 @@ def create_powerpoint():
         if shape.shape_type == MSO_SHAPE_TYPE.TEXT_BOX and shape.text.startswith("Bulgu")
     ]
     if len(bulgu_shapes) != shuffled_df['Bulgu?'].sum():
-        raise ValueError("The number of 'Bulgu' shapes in the presentation does not match the number of 'Bulgu' rows in the DataFrame.")
+        raise SystemExit(f"The number of 'Bulgu' shapes  in the presentation does not match the number of 'Bulgu' rows in the DataFrame. Check the 'Bulgu?' column in the Excel file.")
 
     bulgu_iterator = iter(bulgu_shapes)
 
@@ -362,7 +362,7 @@ def create_powerpoint():
         elif grafik_tipi == "overlayed":
             fig = overlayedgraph(row)
         else:
-            raise ValueError(f"Unknown grafik_tipi: {grafik_tipi}")
+            raise SystemExit(f"There is no function that corresponds to the {grafik_tipi} graph type. Please check the 'Grafik_tipi' column in the Excel file.")
 
         # save figure to local directory
         apg_pic_name = f'{row["APG Full Name"]}.png'
