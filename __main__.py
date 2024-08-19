@@ -235,19 +235,30 @@ def standardgraph(row: pd.Series) -> plt.Figure:
 
 def stackedgraph(row: pd.Series) -> plt.Figure:
     """
-    Create a stacked bar plot for the given row.
+    Create a stacked bar plot for the given row. The bars are stacked based on the Category No.
+    Values are formatted as percentages and the total percentage will add up to 100%.
     """
     stacked_apg_nos = category_to_apg_dict[row["Category No"]]
-    # If next line doesn't exist, the graph will be overwritten by each row. Somehow necessary.
-    ax = plt.figure()
-    ax = transposed[stacked_apg_nos].plot(kind='bar', stacked=True)
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    legend_labels = category_to_apg_full_name_dict[row["Category No"]]
+
+    # Create a figure and axis
+    fig, ax = plt.subplots()
+
+    # Plot the transposed data for the specific categories, with stacked bars
+    transposed[stacked_apg_nos].plot(kind='bar', stacked=True, ax=ax)
+
+    # Update the legend to be at the bottom of the graph
+    ax.legend(labels=legend_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+
+    # Customize the x-ticks and their labels
     ax.set_xticks(COMPANIES_RANGE)
     ax.set_xticklabels(COMPANIES_RANGE)
+
+    # Customize the y-ticks and their labels, formatting them as percentages
     ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels(map(format_percentage, ax.get_yticks()))
 
-    return ax.get_figure()
+    return fig
 
 
 def overlayedgraph(row: pd.Series) -> plt.Figure:
@@ -415,8 +426,9 @@ if __name__ == "__main__":
     merged_df['APG Group'] = merged_df['APG No'].str.extract(APG_NO_PATTERN)[0]
 
     # For the stacked graph, create a dictionary that maps each category to a list of APG No's
-    stacked_df = merged_df[merged_df.Grafik_tipi == "stacked"][["Category No", "APG No"]]
+    stacked_df = merged_df[merged_df.Grafik_tipi == "stacked"][["Category No", "APG No", "APG Full Name"]]
     category_to_apg_dict = stacked_df.groupby('Category No')['APG No'].apply(list).to_dict()
+    category_to_apg_full_name_dict = stacked_df.groupby('Category No')['APG Full Name'].apply(list).to_dict()
 
     # Create reports for each company group
     for company_group, company_list in COMPANY_GROUPS.items():
