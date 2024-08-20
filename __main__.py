@@ -112,7 +112,7 @@ def generate_presentation_intro_text(company_list: list[str]) -> str:
     return presentation_text_template.format(
         company_text=company_enumeration_text,
         company_group=company_group,
-        num_of_APG=unique_categories_amount
+        num_of_APG=unique_apg_amount
     )
 
 
@@ -432,11 +432,11 @@ if __name__ == "__main__":
 
     # Add Category from APG No
     merged_df['Category No'] = merged_df['APG No'].str.split('.').str[0]
-    unique_categories_amount = merged_df['Category No'].nunique()
     # Add a new column to the DataFrame that concatenates the APG No and APG İsmi
     merged_df['APG Full Name'] = merged_df.apply(lambda row: f'{row["APG No"]}-{row["APG İsmi"]}', axis=1)
     # Extract subcategory using regex to group EK APG No's into a common category of APG No's
     merged_df['APG Group'] = merged_df['APG No'].str.extract(APG_NO_PATTERN)[0]
+    unique_apg_amount = merged_df['APG Group'].nunique()
 
     # For the stacked graph, create a dictionary that maps each category to a list of APG No's
     stacked_df = merged_df[merged_df.Grafik_tipi == "stacked"][["Category No", "APG No", "APG Full Name"]]
