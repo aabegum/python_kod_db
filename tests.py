@@ -1,7 +1,19 @@
+# Standard library imports
 import unittest
+
+# Local imports
 from utils import wrap_text_over_words
 
 class TestWrapTitle(unittest.TestCase):
+    """
+    Tests for the wrap_text_over_words function.
+    """
+
+    def test_empty_title(self):
+        title = ""
+        expected = ""
+        result = wrap_text_over_words(title, max_line_length=50)
+        self.assertEqual(result, expected)
 
     def test_short_title(self):
         title = "Short title"
