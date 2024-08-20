@@ -254,6 +254,9 @@ def stackedgraph(row: pd.Series) -> plt.Figure:
     # Plot the transposed data for the specific categories, with stacked bars
     transposed[stacked_apg_nos].plot(kind='bar', stacked=True, ax=ax)
 
+    # Calculate the total value for the stacked data to set as y-axis limit
+    total_value = transposed[stacked_apg_nos].sum(axis=1).max()
+
     # Update the legend to be at the bottom of the graph
     ax.legend(labels=legend_labels, loc='center left', bbox_to_anchor=(1, 0.5))
 
@@ -264,6 +267,9 @@ def stackedgraph(row: pd.Series) -> plt.Figure:
     # Customize the y-ticks and their labels, formatting them as percentages
     ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels(map(format_percentage, ax.get_yticks()))
+
+    # Set y-axis limit to 100% to ensure the graph doesn't show values beyond that
+    ax.set_ylim(0, total_value)
 
     return fig
 
