@@ -111,7 +111,8 @@ def generate_presentation_intro_text(company_list: list[str]) -> str:
     # Replace the placeholders in the template with the generated text
     return presentation_text_template.format(
         company_text=company_enumeration_text,
-        company_group=company_group,
+        company_group=company_group if company_list else "",
+        optional_text=" haricindeki diğer" if company_list else "Tüm",
         num_of_APG=unique_apg_amount
     )
 
