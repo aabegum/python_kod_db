@@ -223,14 +223,13 @@ def standardgraph(row: pd.Series) -> plt.Figure:
             textcoords="offset pixels"
         )
 
-    # set the y-label to indicate that the corresponding KPI is in TL
-    if row["Birim"] == "TL":
-        ax.set(ylabel='TL')
-
     # Set y-axis tick labels if needed
     if row["Birim"] == "%":
         ax.set_yticks(ax.get_yticks())
         ax.set_yticklabels(map(format_percentage, ax.get_yticks()))
+
+    else:
+        ax.set(ylabel=row["Birim"])
 
     # draw horizontal mean value
     ax.axhline(
