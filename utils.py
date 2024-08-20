@@ -1,4 +1,4 @@
-def wrap_text_over_words(title: str, max_line_length: int):
+def wrap_text_over_words(title: str, max_line_length: int) -> str:
     """
     Wraps the title string into lines with a maximum specified length without breaking words.
 
@@ -9,9 +9,9 @@ def wrap_text_over_words(title: str, max_line_length: int):
     Returns:
     str: The wrapped title string.
     """
-    current_line_length = 0
-    lines = []
-    current_line = []
+    current_line_length: int = 0
+    current_line: list[str] = []
+    lines: list[str] = []
 
     words = title.split()
 
