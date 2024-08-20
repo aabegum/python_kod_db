@@ -399,7 +399,7 @@ def create_powerpoint():
         if row["Bulgu?"]:
             shape = next(bulgu_iterator)
             filtered_mean_value = row["filtered_mean"]
-            formatted_filtered_mean = format_percentage(filtered_mean_value) if row["Birim"] == "%" else str(filtered_mean_value)
+            formatted_filtered_mean = format_percentage(filtered_mean_value) if row["Birim"] == "%" else round(filtered_mean_value, DEFAULT_DECIMAL_DIGITS)
             shape.text = f'Bulgu\n{NUM_OF_COMPANIES} şirketin ortalaması {formatted_filtered_mean} olarak tespit edilmiştir.'
             paragraphs = shape.text_frame.paragraphs
             paragraphs[0].font.bold = True
