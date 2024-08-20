@@ -1,4 +1,10 @@
 #! /usr/bin/env python
+"""
+This program processes data from various distribution companies and generates a PowerPoint presentation with graphs comparing their performance.
+
+Author: Onur Arıkan
+Date: 2024-08-20
+"""
 
 # Standard library imports
 import logging
