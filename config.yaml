@@ -33,6 +33,9 @@ SIGMA: 3
 # Decimal digits for the percentage values in the graphs.
 DEFAULT_DECIMAL_DIGITS: 1
 
+# Word wrap limit for the graph titles
+WORD_WRAP_LIMIT: 50
+
 # Plot appearance settings
 ANNOTATION_FONT_SIZE: 9
 HORIZONTAL_MEAN_COLOR: purple

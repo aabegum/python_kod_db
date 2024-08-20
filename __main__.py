@@ -16,6 +16,10 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 import seaborn as sns
 import yaml
 
+# Local imports
+from utils import wrap_text_over_words
+
+
 # Configure seaborn
 sns.set_style(style="whitegrid")
 sns.set_palette("muted")
@@ -66,6 +70,7 @@ SIGMA: int = config['SIGMA']
 START_COL = 3
 END_COL = START_COL + NUM_OF_COMPANIES
 DEFAULT_DECIMAL_DIGITS = config['DEFAULT_DECIMAL_DIGITS']
+WORD_WRAP_LIMIT = config['WORD_WRAP_LIMIT']
 
 # Define the company color indicators
 GROUP_COMPANY_INDICATOR = 0
@@ -201,7 +206,10 @@ def standardgraph(row: pd.Series) -> plt.Figure:
     ax.grid(axis='y')
     ax.set_xticks(COMPANIES_RANGE)
     ax.set_xticklabels(COMPANIES_RANGE)
-    ax.set(title=row['APG Full Name'])
+
+    # Wrap the title text if it's too long
+    wrapped_title = wrap_text_over_words(row['APG Full Name'], WORD_WRAP_LIMIT)
+    ax.set(title=wrapped_title)
 
     # annotate points on the graph
     for company_index in COMPANIES_RANGE:
