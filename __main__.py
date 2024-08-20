@@ -261,7 +261,7 @@ def stackedgraph(row: pd.Series) -> plt.Figure:
     ax.legend(labels=legend_labels, loc='center left', bbox_to_anchor=(1, 0.5))
 
     # Customize the x-ticks and their labels
-    ax.set_xticks(COMPANIES_RANGE)
+    ax.set_xticks(COMPANIES_RANGE - 1)  # Thanks to numpy arrays, I was able to fix the bug that was caused by the 0-based indexing in the x-axis of the graph
     ax.set_xticklabels(COMPANIES_RANGE)
 
     # Customize the y-ticks and their labels, formatting them as percentages
