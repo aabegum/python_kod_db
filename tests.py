@@ -30,6 +30,3 @@ class TestWrapTitle(unittest.TestCase):
                     "function handles different cases")
         result = wrap_text_over_words(title, max_line_length=40)
         self.assertEqual(result, expected)
-
-if __name__ == '__main__':
-    unittest.main()
